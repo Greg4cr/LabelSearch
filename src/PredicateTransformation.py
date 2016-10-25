@@ -1,6 +1,9 @@
 # Gregory Gay (greg@greggay.com)
 # Predicate parsing and translation to cost functions.
 # Based on code by Ruslan Spivak (https://ruslanspivak.com/lsbasi-part7/)
+# Cost functions and normalization function are based on those defined in: 
+# Arcuri, Andrea. "It really does matter how you normalize the branch distance in search-based software testing."
+# Software Testing, Verification and Reliability 23.2 (2013): 119-147.
 
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -43,6 +46,7 @@ class Token(object):
 
 class Lexer(object):
     def __init__(self, text):
+        print text
         # client string input, e.g. "4 + 2 * 3 - 6 / 2"
         self.text = text
         # self.pos is an index into self.text
@@ -204,12 +208,34 @@ class Parser(object):
             self.error()
 
     def factor(self,propagateNot,boolVar):
-        """factor : ATOM | (NOT)* LPAREN notExpr RPAREN
+        """factor : (NOT)* ATOM | (NOT)* LPAREN notExpr RPAREN
            Second argument - used to determine if an ATOM is a boolean variable that is not part of a term.
            (i.e., x in (x && (y < 4))
         """
         token = self.current_token
-        if token.type == ATOM:
+
+        if token.type == NOT:
+            self.eat(NOT)
+            token = self.current_token
+            if token.type == ATOM:
+                self.eat(ATOM)
+                if propagateNot == 0:
+                    token.value = "!"+token.value
+                    if boolVar == 1:
+                        return BoolVar(token)
+                    else:
+                        return Atom(token)
+                else:
+                    if boolVar == 1:
+                        return BoolVar(token)
+                    else:
+                        return Atom(token)
+            elif token.type == LPAREN:
+                self.eat(LPAREN)
+                node = self.notExpr(1)
+                self.eat(RPAREN)
+                return node
+        elif token.type == ATOM:
             self.eat(ATOM)
             if propagateNot == 1:
                token.value = "!"+token.value
@@ -222,14 +248,6 @@ class Parser(object):
                    return BoolVar(token)
                else:
                    return Atom(token)
-        elif token.type == NOT:
-            self.eat(NOT)
-            token = self.current_token
-            if token.type == LPAREN:
-                self.eat(LPAREN)
-                node = self.notExpr(1)
-                self.eat(RPAREN)
-                return node
         elif token.type == LPAREN:
             self.eat(LPAREN)
             node = self.notExpr(propagateNot)
@@ -347,24 +365,24 @@ class Interpreter(NodeVisitor):
 
     def visit_BinOp(self, node):
         if node.op.type == LT:
-            return "("+self.visit(node.left)+" - "+self.visit(node.right)+" < 0 ? 0 : ("+self.visit(node.left)+" - "+self.visit(node.right)+") + k)"
+            return "("+self.visit(node.left)+" - "+self.visit(node.right)+" < 0 ? 0 : ("+self.visit(node.left)+" - "+self.visit(node.right)+") + scoreEpsilon)"
         elif node.op.type == LTE:
-            return "("+self.visit(node.left)+" - "+self.visit(node.right)+" <= 0 ? 0 : ("+self.visit(node.left)+" - "+self.visit(node.right)+") + k)"
+            return "("+self.visit(node.left)+" - "+self.visit(node.right)+" <= 0 ? 0 : ("+self.visit(node.left)+" - "+self.visit(node.right)+") + scoreEpsilon)"
         elif node.op.type == GT:
-            return "("+self.visit(node.right)+" - "+self.visit(node.left)+" < 0 ? 0 : ("+self.visit(node.right)+" - "+self.visit(node.left)+") + k)"
+            return "("+self.visit(node.right)+" - "+self.visit(node.left)+" < 0 ? 0 : ("+self.visit(node.right)+" - "+self.visit(node.left)+") + scoreEpsilon)"
         elif node.op.type == GTE:
-            return "("+self.visit(node.right)+" - "+self.visit(node.left)+" <= 0 ? 0 : ("+self.visit(node.right)+" - "+self.visit(node.left)+") + k)"
+            return "("+self.visit(node.right)+" - "+self.visit(node.left)+" <= 0 ? 0 : ("+self.visit(node.right)+" - "+self.visit(node.left)+") + scoreEpsilon)"
         elif node.op.type == EQ:
-            return "(abs("+self.visit(node.left)+" - "+self.visit(node.right)+") == 0 ? 0 : abs("+self.visit(node.left)+" - "+self.visit(node.right)+") + k)"
+            return "(abs("+self.visit(node.left)+" - "+self.visit(node.right)+") == 0 ? 0 : abs("+self.visit(node.left)+" - "+self.visit(node.right)+") + scoreEpsilon)"
         elif node.op.type == NEQ:
-            return "(abs("+self.visit(node.left)+" - "+self.visit(node.right)+") != 0 ? 0 : k)"
+            return "(abs("+self.visit(node.left)+" - "+self.visit(node.right)+") != 0 ? 0 : scoreEpsilon)"
         elif node.op.type == AND:
             return "("+self.visit(node.left)+" + "+self.visit(node.right)+")" 
         elif node.op.type == OR:
             return "("+self.visit(node.left)+" < "+self.visit(node.right)+" ? "+self.visit(node.left)+" : "+self.visit(node.right)+")" 
 
     def visit_BoolVar(self, node):
-        return "("+node.value+" ? 0 : k)"
+        return "("+node.value+" ? 0 : scoreEpsilon)"
 
     def visit_Atom(self, node):
         return node.value
