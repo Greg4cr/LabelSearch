@@ -13,10 +13,10 @@ LabelSearch is a proof-of-concept test case generator for C programs annotated w
 Progress
 ------------------------
 
-Instrumentation - In Progress
-Test Suite Structure - To Do
-Input Generation - To Do
-Genetic Algorithm - To Do
+* Instrumentation - In Progress
+* Test Suite Structure - To Do
+* Input Generation - To Do
+* Genetic Algorithm - To Do
 
 Currently, we support basic label coverage. In the future, we plan to extend this to include hyperlabels.
 
