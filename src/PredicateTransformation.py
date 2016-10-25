@@ -179,6 +179,11 @@ class Atom(AST):
         self.token = token
         self.value = token.value
 
+class BoolVar(AST):
+    def __init__(self, token):
+        self.token = token
+        self.value = token.value
+   
 class Parser(object):
     def __init__(self, lexer):
         self.lexer = lexer
@@ -198,16 +203,25 @@ class Parser(object):
         else:
             self.error()
 
-    def factor(self,propagateNot):
-        """factor : ATOM | (NOT)* LPAREN notExpr RPAREN"""
+    def factor(self,propagateNot,boolVar):
+        """factor : ATOM | (NOT)* LPAREN notExpr RPAREN
+           Second argument - used to determine if an ATOM is a boolean variable that is not part of a term.
+           (i.e., x in (x && (y < 4))
+        """
         token = self.current_token
         if token.type == ATOM:
             self.eat(ATOM)
             if propagateNot == 1:
                token.value = "!"+token.value
-               return Atom(token)
+               if boolVar == 1:
+                   return BoolVar(token)
+               else:
+                   return Atom(token)
             else:
-                return Atom(token)
+               if boolVar == 1:
+                   return BoolVar(token)
+               else:
+                   return Atom(token)
         elif token.type == NOT:
             self.eat(NOT)
             token = self.current_token
@@ -228,9 +242,9 @@ class Parser(object):
         """
         nextToken = self.lexer.look_ahead()
         if nextToken.type in (LT, LTE, GT, GTE, EQ, NEQ):
-            node = self.factor(0)
+            node = self.factor(0,0)
         else:
-            node = self.factor(propagateNot)
+            node = self.factor(propagateNot,1)
 
         while self.current_token.type in (LT, LTE, GT, GTE, EQ, NEQ):
             token = self.current_token
@@ -270,7 +284,7 @@ class Parser(object):
                 elif token.type == NEQ:
                     self.eat(NEQ)
 
-            node = BinOp(left=node, op=token, right=self.factor(0))
+            node = BinOp(left=node, op=token, right=self.factor(0,0))
 
         return node
 
@@ -348,6 +362,9 @@ class Interpreter(NodeVisitor):
             return "("+self.visit(node.left)+" + "+self.visit(node.right)+")" 
         elif node.op.type == OR:
             return "("+self.visit(node.left)+" < "+self.visit(node.right)+" ? "+self.visit(node.left)+" : "+self.visit(node.right)+")" 
+
+    def visit_BoolVar(self, node):
+        return "("+node.value+" ? 0 : k)"
 
     def visit_Atom(self, node):
         return node.value
