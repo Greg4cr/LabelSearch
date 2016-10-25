@@ -232,7 +232,11 @@ class Parser(object):
                         return Atom(token)
             elif token.type == LPAREN:
                 self.eat(LPAREN)
-                node = self.notExpr(1)
+                if propagateNot == 0:
+                    node = self.expr(1)
+                else:
+                    # If !(!(x)), cancel out the NOT
+                    node = self.expr(0)
                 self.eat(RPAREN)
                 return node
         elif token.type == ATOM:
@@ -250,7 +254,7 @@ class Parser(object):
                    return Atom(token)
         elif token.type == LPAREN:
             self.eat(LPAREN)
-            node = self.notExpr(propagateNot)
+            node = self.expr(propagateNot)
             self.eat(RPAREN)
             return node
 
@@ -307,7 +311,11 @@ class Parser(object):
         return node
 
     def expr(self, propagateNot):
-        """expr : term ((AND | OR) term)*"""
+        """
+        expr   : term ((AND | OR) term)*
+        term   : factor ((LT | LTE | GT | GTE | EQ | NEQ) factor)*
+        factor : (NOT)* ATOM | (NOT)* LPAREN expr RPAREN
+        """
         node = self.term(propagateNot)
 
         while self.current_token.type in (AND, OR):
@@ -321,12 +329,13 @@ class Parser(object):
 
         return node
         
+    '''
     def notExpr(self,propagateNot):
         """
         notExpr: NOT expr | expr
         expr   : term ((AND | OR) term)*
         term   : factor ((LT | LTE | GT | GTE | EQ | NEQ) factor)*
-        factor : ATOM | (NOT)* LPAREN notExpr RPAREN
+        factor : (NOT)* ATOM | (NOT)* LPAREN expr RPAREN
         """
 
         if self.current_token.type == NOT:
@@ -340,9 +349,10 @@ class Parser(object):
             node = self.expr(propagateNot)
 
         return node
+    '''
 
     def parse(self):
-        return self.notExpr(0)
+        return self.expr(0)
 
 ###############################################################################
 #                                                                             #
