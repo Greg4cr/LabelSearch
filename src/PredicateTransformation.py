@@ -72,6 +72,18 @@ class Lexer(object):
             self.advance()
         return result
 
+    # Look ahead at next token
+    def look_ahead(self):
+        if self.pos < len(self.text):
+            current_pos = self.pos
+            token = self.get_next_token()
+            self.pos = current_pos
+            self.current_char = self.text[self.pos]
+
+            return token
+        else:
+            return Token(EOF, None)
+
     def get_next_token(self):
         """Lexical analyzer (also known as scanner or tokenizer)
 
@@ -186,21 +198,85 @@ class Parser(object):
         else:
             self.error()
 
-    def factor(self):
-        """factor : ATOM | LPAREN expr RPAREN"""
+    def factor(self,propagateNot):
+        """factor : ATOM | (NOT)* LPAREN notExpr RPAREN"""
         token = self.current_token
         if token.type == ATOM:
             self.eat(ATOM)
-            return Atom(token)
+            if propagateNot == 1:
+               token.value = "!"+token.value
+               return Atom(token)
+            else:
+                return Atom(token)
+        elif token.type == NOT:
+            self.eat(NOT)
+            token = self.current_token
+            if token.type == LPAREN:
+                self.eat(LPAREN)
+                node = self.notExpr(1)
+                self.eat(RPAREN)
+                return node
         elif token.type == LPAREN:
             self.eat(LPAREN)
-            node = self.expr()
+            node = self.notExpr(propagateNot)
             self.eat(RPAREN)
             return node
 
-    def term(self):
-        """term : factor ((AND | OR) factor)*"""
-        node = self.factor()
+    def term(self, propagateNot):
+        """
+        term   : factor ((LT | LTE | GT | GTE | EQ | NEQ) factor)*
+        """
+        nextToken = self.lexer.look_ahead()
+        if nextToken.type in (LT, LTE, GT, GTE, EQ, NEQ):
+            node = self.factor(0)
+        else:
+            node = self.factor(propagateNot)
+
+        while self.current_token.type in (LT, LTE, GT, GTE, EQ, NEQ):
+            token = self.current_token
+
+            if propagateNot == 1:
+                # NOT (x == 3) becomes (x != 3), etc.
+                # Transform the operator if a NOT is being propagated, then stop propagating the NOT to the right side of the expression.
+                if token.type == LT:
+                    self.eat(LT)
+                    token = Token(GTE, '>=')
+                elif token.type == LTE:
+                    self.eat(LTE)
+                    token = Token(GT, '>')
+                elif token.type == GT:
+                    self.eat(GT)
+                    token = Token(LTE, '<=')
+                elif token.type == GTE:
+                    self.eat(GTE)
+                    token = Token(LT, '<')
+                elif token.type == EQ:
+                    self.eat(EQ)
+                    token = Token(NEQ, '!=')
+                elif token.type == NEQ:
+                    self.eat(NEQ)
+                    token = Token(EQ, '==')
+            else:
+                if token.type == LT:
+                    self.eat(LT)
+                elif token.type == LTE:
+                    self.eat(LTE)
+                elif token.type == GT:
+                    self.eat(GT)
+                elif token.type == GTE:
+                    self.eat(GTE)
+                elif token.type == EQ:
+                    self.eat(EQ)
+                elif token.type == NEQ:
+                    self.eat(NEQ)
+
+            node = BinOp(left=node, op=token, right=self.factor(0))
+
+        return node
+
+    def expr(self, propagateNot):
+        """expr : term ((AND | OR) term)*"""
+        node = self.term(propagateNot)
 
         while self.current_token.type in (AND, OR):
             token = self.current_token
@@ -209,39 +285,32 @@ class Parser(object):
             elif token.type == OR:
                 self.eat(OR)
 
-            node = BinOp(left=node, op=token, right=self.factor())
+            node = BinOp(left=node, op=token, right=self.term(propagateNot))
 
         return node
-
-    def expr(self):
+        
+    def notExpr(self,propagateNot):
         """
-        expr   : term ((LT | LTE | GT | GTE | EQ | NEQ) term)*
-        term   : factor ((AND | OR) factor)*
-        factor : ATOM | LPAREN expr RPAREN
+        notExpr: NOT expr | expr
+        expr   : term ((AND | OR) term)*
+        term   : factor ((LT | LTE | GT | GTE | EQ | NEQ) factor)*
+        factor : ATOM | (NOT)* LPAREN notExpr RPAREN
         """
-        node = self.term()
 
-        while self.current_token.type in (LT, LTE, GT, GTE, EQ, NEQ):
-            token = self.current_token
-            if token.type == LT:
-                self.eat(LT)
-            elif token.type == LTE:
-                self.eat(LTE)
-            elif token.type == GT:
-                self.eat(GT)
-            elif token.type == GTE:
-                self.eat(GTE)
-            elif token.type == EQ:
-                self.eat(EQ)
-            elif token.type == NEQ:
-                self.eat(NEQ)
-
-            node = BinOp(left=node, op=token, right=self.term())
+        if self.current_token.type == NOT:
+            self.eat(NOT)
+            if propagateNot == 0:
+                node = self.expr(1)
+            else:
+                # If !(!(X)) seen, the two NOTs cancel out.
+                node = self.expr(0)
+        else:
+            node = self.expr(propagateNot)
 
         return node
 
     def parse(self):
-        return self.expr()
+        return self.notExpr(0)
 
 ###############################################################################
 #                                                                             #
@@ -291,9 +360,9 @@ def main():
     while True:
         try:
             try:
-                text = raw_input('spi> ')
+                text = raw_input('predicate> ')
             except NameError:  # Python3
-                text = input('spi> ')
+                text = input('predicate> ')
         except EOFError:
             break
         if not text:
