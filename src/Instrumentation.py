@@ -96,7 +96,7 @@ class Instrumentation():
         adjustedLabel=label[label.index("pc_label(")+9:label.index(");")]
         words=adjustedLabel.strip().split(",")
         # Prepare new expression
-        newLabel="obligation["+words[1]+"]="
+        newLabel="obligations["+words[1]+"]="
 
         # Break down predicate into cost function
         lexer = Lexer(words[0])
