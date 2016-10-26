@@ -12,7 +12,6 @@
 # -l <labels file, if non-standard name used, default= <program>.labels
 # -o <filename of instrumented version, optional, default = <program>_instrumented.c>
 # -k <constant used in score calculation, default = 1>
-# -b <constant used in normalization, default = 1>
 
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -26,7 +25,6 @@ from PredicateTransformation import *
 class Instrumentation(): 
 
     scoreEpsilon = 1.0
-    normalConstant = 1.0
 
     # Central process of instrumentation
     def instrument(self,program,labelFile,outFile):
@@ -49,7 +47,6 @@ class Instrumentation():
                     obDeclaration+=", 1000000.0"
                 instrumented.append(obDeclaration+"};")
                 instrumented.append("float scoreEpsilon = "+str(self.scoreEpsilon)+";")
-                #instrumented.append("float normalConstant = "+str(self.normalConstant)+";")
                 instrumented.append(line)
 
             # Replace labels with scores
@@ -127,27 +124,22 @@ class Instrumentation():
     def setScoreEpsilon(self,scoreEpsilon):
         self.scoreEpsilon = scoreEpsilon
 
-    # Set normalization constant
-    def setNormalConstant(self,normalConstant):
-        self.normalConstant = normalConstant
-
 def main(argv):
     instrumenter = Instrumentation()
     program = ""
     outFile = ""
     labelFile = ""
     scoreEpsilon = 1
-    normalConstant = 1
 
     try:
-        opts, args = getopt.getopt(argv,"hp:l:o:k:b:")
+        opts, args = getopt.getopt(argv,"hp:l:o:k:")
     except getopt.GetoptError:
-        print 'Instrumentation.py -p <program name> -l <label file> -o <output filename> -k <constant to use for cost functions> -b <constant used in normalization>'
+        print 'Instrumentation.py -p <program name> -l <label file> -o <output filename> -k <constant to use for cost functions>'
       	sys.exit(2)
   		
     for opt, arg in opts:
         if opt == "-h":
-            print 'Instrumentation.py -p <program name> -l <label file> -o <output filename> -k <constant to use for cost functions> -b <constant used in normalization>'
+            print 'Instrumentation.py -p <program name> -l <label file> -o <output filename> -k <constant to use for cost functions>'
             sys.exit()
       	elif opt == "-p":
             if arg == "":
@@ -160,8 +152,6 @@ def main(argv):
             labelFile= arg
         elif opt == "-k":
             scoreEpsilon = float(opt)
-        elif opt == "-b":
-            normalConstant = float(opt)
 
     if labelFile == "":
         labelFile = program[:program.index(".c")]+".labels"
@@ -173,7 +163,6 @@ def main(argv):
         raise Exception('No program specified')
     else:
         instrumenter.setScoreEpsilon(scoreEpsilon)
-        instrumenter.setNormalConstant(normalConstant)
 	instrumenter.instrument(program,labelFile,outFile)
 
 # Call into main
