@@ -52,20 +52,14 @@ class Instrumentation():
             # Replace labels with scores
             elif "pc_label(" in line:
                 if ");" in line:
-                    print "-----"
-                    print line
                     replaced=self.replaceLabel(line.strip())
-                    print replaced
                     instrumented.append(replaced)
                 else:
                     partial=line.strip()
             elif partial != "-1":
                 partial=partial+line.strip()
                 if ");" in line:
-                    print "-----"
-                    print partial
                     replaced=self.replaceLabel(partial)
-                    print replaced
                     instrumented.append(replaced)
                     partial="-1"
             else:
