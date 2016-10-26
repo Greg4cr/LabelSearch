@@ -40,13 +40,18 @@ class Instrumentation():
         partial="-1"
         for line in code:
             # Insert obligations array as a global variable after all include statements are over. 
-            # Also insert the constants used in cost functions.
+            # Also insert the constant used in cost functions.
             if "#includes" not in line and includes==1:
                 includes=0
-                instrumented.append("float obligations["+str(numObs)+"];")
+                obDeclaration="float obligations["+str(numObs+1)+"] = {"+str(numObs)+".0"
+                # Initialize all scores to some high constant
+                for ob in range(1,numObs+1):
+                    obDeclaration+=", 1000000.0"
+                instrumented.append(obDeclaration+"};")
                 instrumented.append("float scoreEpsilon = "+str(self.scoreEpsilon)+";")
-                instrumented.append("float normalConstant = "+str(self.normalConstant)+";")
+                #instrumented.append("float normalConstant = "+str(self.normalConstant)+";")
                 instrumented.append(line)
+
             # Replace labels with scores
             elif "pc_label(" in line:
                 if ");" in line:
@@ -70,7 +75,7 @@ class Instrumentation():
                 instrumented.append(line)
                     
         code.close()
-        
+ 
         # Print instrumented code to file
         self.writeOutFile(instrumented,outFile)
 
@@ -102,12 +107,14 @@ class Instrumentation():
         lexer = Lexer(words[0])
         parser = Parser(lexer)
         interpreter = Interpreter(parser)
-        newLabel+=interpreter.interpret()
-        newLabel+=";"
+        equation=interpreter.interpret()
+        
+        # Check whether new score is better than existing score
+        newLabel=newLabel+"(("+equation+" < obligations["+words[1]+"]) ? "+equation+" : obligations["+words[1]+"]);"
 
         return newLabel
 
-    # Write results to a CSV file
+    # Write instrumented program to a file
     def writeOutFile(self,instrumented,outFile):
         where = open(outFile, 'w')
        
@@ -120,6 +127,7 @@ class Instrumentation():
     def setScoreEpsilon(self,scoreEpsilon):
         self.scoreEpsilon = scoreEpsilon
 
+    # Set normalization constant
     def setNormalConstant(self,normalConstant):
         self.normalConstant = normalConstant
 
