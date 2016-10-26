@@ -19,10 +19,12 @@ class Generator():
     def generate(self,program,outFile):
 
         # Read in program and get list of functions.
-        #methods=self.getListOfFunctions(program)
+        functions=self.getListOfFunctions(program)
 
         # Generate test cases
         tests=[]
+        # Pass in function list
+        # For each unit test, call functions from list, decide whether to add additional method calls
 
         # Build suite code
         suite=self.buildSuite(program,tests,outFile)
@@ -65,10 +67,29 @@ class Generator():
     # Read in C file and get list of functions from it.
     def getListOfFunctions(self,program):
         code=open(program,'r')
+        functions=[]
+        
+        # Two recognition rules
+        # 1: At bracket depth = 0
+        # 2: Has parameters (at least parentheses for them)
+        depth=0
         for line in code:
-            print line
+            if depth == 0:
+                if "(" in line:
+                    words=line.strip().split(" ")
+                    declaration=words[0]+","+words[1].replace(";","")
+                    declaration=declaration[:declaration.index("(")]+","+declaration[declaration.index("("):]
+                    if declaration not in functions:
+                        functions.append(declaration)
+
+            if "{" in line:
+                depth+=1
+
+            if "}" in line:
+                depth-=1
                 
         code.close()
+        return functions
 
     # Write instrumented program to a file
     def writeOutFile(self,suite,outFile):
