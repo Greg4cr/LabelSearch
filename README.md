@@ -13,8 +13,8 @@ LabelSearch is a proof-of-concept test case generator for C programs annotated w
 Progress
 ------------------------
 
-* Instrumentation - In Progress
-* Test Suite Structure - To Do
+* Instrumentation - Complete
+* Test Suite Structure - In Progress
 * Input Generation - To Do
 * Genetic Algorithm - To Do
 
@@ -29,6 +29,8 @@ Requirements
 ------------------------
 
 Labels are generated using the Frama-C/LTest framework, available from [Mickaël Delahaye](http://micdel.fr/ltest.html).
+
+Parsing for test generation is performed using pycparser. To install, see [their GitHub page for instructions.](https://github.com/eliben/pycparser/).
 
 Reporting Faults
 ------------------------
