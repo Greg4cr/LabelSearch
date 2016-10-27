@@ -12,14 +12,27 @@
 import getopt
 import sys
 import os
+from pycparser import parse_file, c_parser, c_ast
+from DependencyGraph import *
 
 class Generator(): 
 
-    # Central process of instrumentation
-    def generate(self,program,outFile):
+    # Program to generate tests for.
+    __program=""
+    # List of functions in that program.
+    __functions=[]
+    # List of global (state) variables.
+    __stateVariables=[]
 
-        # Read in program and get list of functions.
-        functions=self.getListOfFunctions(program)
+    # Central process of instrumentation
+    def generate(self,outFile):
+
+        if self.getProgram()=="":
+            raise Exception("No program set for generation.")
+
+        # Read in program and get list of functions and state variables.
+        if self.getFunctions()==[] or __stateVariables==[]:
+            self.initializeProgramData()
 
         # Generate test cases
         tests=[]
@@ -27,17 +40,17 @@ class Generator():
         # For each unit test, call functions from list, decide whether to add additional method calls
 
         # Build suite code
-        suite=self.buildSuite(program,tests,outFile)
+        suite=self.buildSuite(tests,outFile)
  
         # Print test suite to file
         self.writeOutFile(suite,outFile)
 
     # Build suite code
-    def buildSuite(self,program,tests,outFile):
+    def buildSuite(self,tests,outFile):
         suite=[]
         # Add includes statements
         suite.append("#include <stdio.h>")
-        suite.append("#include \""+program+"\"")
+        suite.append("#include \""+self.getProgram()+"\"")
 
         # Declare test array
         suite.append("\n// Array indexing test entries.\n// tests[0] indicates number of tests\n// tests[1] corresponds to test1(), etc.")
@@ -46,9 +59,11 @@ class Generator():
             testDecl+=",1"
         suite.append(testDecl+"};")
 
-        # Add code for printing to screen/file
+        # Add code for printing to screen/file and resetting obligation scores.
 
-        suite.append("\n// Flag for printing obligation scores to a CSV file at the end of execution.\nint print = 1;\nchar* fileName = \""+outFile+"sv\";\n\n// Flag for printing obligation scores to the screen at the end of execution.\nint screen = 1;\n\n// Prints obligation scores to the screen\nvoid printScoresToScreen(){\n    printf(\"# Obligation, Score (Unnormalized)\\n\");\n    int obligation;\n    for(obligation=1; obligation<=obligations[0]; obligation++){\n        printf(\"%d, %f\\n\",obligation,obligations[obligation]);\n    }\n}\n\n// Prints obligation scores to a file\nvoid printScoresToFile(){\n    FILE *outFile = fopen(fileName,\"w\");\n    fprintf(outFile, \"# Obligation, Score (Unnormalized)\\n\");\n    int obligation;\n    for(obligation=1; obligation<=obligations[0]; obligation++){\n        fprintf(outFile,\"%d, %f\\n\",obligation,obligations[obligation]);\n    }\n    fclose(outFile);\n}\n\n// Test Cases")
+        suite.append("\n// Flag for printing obligation scores to a CSV file at the end of execution.\nint print = 1;\nchar* fileName = \""+outFile+"sv\";\n\n// Flag for printing obligation scores to the screen at the end of execution.\nint screen = 1;\n\n// Prints obligation scores to the screen\nvoid printScoresToScreen(){\n    printf(\"# Obligation, Score (Unnormalized)\\n\");\n    int obligation;\n    for(obligation=1; obligation<=obligations[0]; obligation++){\n        printf(\"%d, %f\\n\",obligation,obligations[obligation]);\n    }\n}\n\n// Prints obligation scores to a file\nvoid printScoresToFile(){\n    FILE *outFile = fopen(fileName,\"w\");\n    fprintf(outFile, \"# Obligation, Score (Unnormalized)\\n\");\n    int obligation;\n    for(obligation=1; obligation<=obligations[0]; obligation++){\n        fprintf(outFile,\"%d, %f\\n\",obligation,obligations[obligation]);\n    }\n    fclose(outFile);\n}\n\n// Resets obligation scores\nvoid resetObligationScores(){\n    int obligation;\n    for(obligation=1; obligation<=obligations[0]; obligation++){\n        // Set to some high level\n        obligations[obligation] = 1000000.0;\n    }\n}\n")
+
+        suite.append("// Test Cases\n")
 
 	# Append test case code
         for test in range(0,len(tests)):
@@ -64,32 +79,19 @@ class Generator():
 
         return suite
 
-    # Read in C file and get list of functions from it.
-    def getListOfFunctions(self,program):
-        code=open(program,'r')
-        functions=[]
-        
-        # Two recognition rules
-        # 1: At bracket depth = 0
-        # 2: Has parameters (at least parentheses for them)
-        depth=0
-        for line in code:
-            if depth == 0:
-                if "(" in line:
-                    words=line.strip().split(" ")
-                    declaration=words[0]+","+words[1].replace(";","")
-                    declaration=declaration[:declaration.index("(")]+","+declaration[declaration.index("("):]
-                    if declaration not in functions:
-                        functions.append(declaration)
-
-            if "{" in line:
-                depth+=1
-
-            if "}" in line:
-                depth-=1
-                
-        code.close()
-        return functions
+    # Read in C file and get list of functions and state variables from it.
+    def initializeProgramData(self):
+        # Parse the program and generate the AST
+        ast = parse_file(self.getProgram(), use_cpp=True)
+        #ast.show()      
+ 
+        # Use the ProgramDataVisitor to build the function and global variable lists
+        pdVisitor = ProgramDataVisitor()
+        pdVisitor.visit(ast)
+        self.setFunctions(pdVisitor.functions)
+        self.setStateVariables(pdVisitor.stateVariables)
+        print self.getFunctions()
+        print self.getStateVariables()
 
     # Write instrumented program to a file
     def writeOutFile(self,suite,outFile):
@@ -99,6 +101,26 @@ class Generator():
             where.write(line+"\n")
 
         where.close()
+
+    # Setters for global variables
+    def setProgram(self,program):
+        self.__program=program
+
+    def setFunctions(self,functions):
+        self.__functions=functions
+
+    def setStateVariables(self,stateVariables):
+        self.__stateVariables=stateVariables
+
+    # Getters for global variables
+    def getProgram(self):
+        return self.__program
+
+    def getFunctions(self):
+        return self.__functions
+
+    def getStateVariables(self):
+        return self.__stateVariables
 
 def main(argv):
     generator = Generator()
@@ -129,7 +151,8 @@ def main(argv):
     if program == '':
         raise Exception('No program specified')
     else:
-	generator.generate(program,outFile)
+        generator.setProgram(program)
+	generator.generate(outFile)
 
 # Call into main
 if __name__ == '__main__':

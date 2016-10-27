@@ -33,6 +33,15 @@ void printScoresToFile(){
     fclose(outFile);
 }
 
+// Resets obligation scores
+void resetObligationScores(){
+    int obligation;
+    for(obligation=1; obligation<=obligations[0]; obligation++){
+        // Set to some high level
+        obligations[obligation] = 1000000.0;
+    }
+}
+
 // Test Cases
 void test001(){
     ALIM();
