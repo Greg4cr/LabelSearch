@@ -1,4 +1,5 @@
-from pycparser import c_ast
+import sys
+from pycparser import c_ast, c_generator
 
 class ProgramDataVisitor(c_ast.NodeVisitor):
 
@@ -8,38 +9,52 @@ class ProgramDataVisitor(c_ast.NodeVisitor):
     # Global variable list
     stateVariables=[]
 
+    # Generator to get C code from a node
+    generator = c_generator.CGenerator()
+
     # When we hit a function definition, grab the function name, return type, and arguments.
     def visit_FuncDef(self, node):
         function=[]
         # Name
         function.append(node.decl.name)
-        args=[]
-        # Arguments
-        for param in node.decl.type.args.params:
-            arg=[]
-            # Argument Name
-            arg.append(param.name)
-            # Argument Type
-            arg.append(param.type.type.names)
-            args.append(arg)
 
+        # Return type
+        function.append(node.decl.type.type.type.names)
+
+        # Arguments
+        args=self.generator.visit(node.decl.type.args).split(",")
+        
         function.append(args)
         self.functions.append(function)
      
     # Decl nodes correspond to global variables.
     def visit_Decl(self, node):
-        # Get name, type, and declared value (if any).
+        # Get name, type, status (variable, array, pointer), and declared value (if any).
         # Make sure that it is not the obligations array.
-        if node.name != "obligations":
+        if node.name != "obligations" and node.name != "scoreEpsilon":
             var=[]
             var.append(node.name)
             # Handle based on type
             if type(node.type) is c_ast.TypeDecl:
-                print "TD"
+                # Status
+                var.append("var")
+                # Type
+                var.append(node.type.type.names)
+                # Initial Value
+                var.append(self.generator.visit(node.init))
                 self.stateVariables.append(var)
             if type(node.type) is c_ast.ArrayDecl:
-                print "AD"
+                var.append("array")
+                # Type
+                var.append(node.type.type.type.names)
+                # Initial Value
+                var.append(self.generator.visit(node.init))
                 self.stateVariables.append(var)
             if type(node.type) is c_ast.PtrDecl:
-                print "PD"
+                # Status
+                var.append("pointer")
+                # Type
+                var.append(node.type.type.type.names)
+                # Initial value
+                var.append(self.generator.visit(node.init))
                 self.stateVariables.append(var)
