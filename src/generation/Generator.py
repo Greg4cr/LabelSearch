@@ -23,6 +23,8 @@ class Generator():
     __functions=[]
     # List of global (state) variables.
     __stateVariables=[]
+    # Dependency map for state information
+    __dependencyMap=[]
 
     # Central process of instrumentation
     def generate(self,outFile):
@@ -92,6 +94,12 @@ class Generator():
         self.setStateVariables(pdVisitor.stateVariables)
         print self.getFunctions()
         print self.getStateVariables()
+        
+        # Use the DependencyMapVisitor to build the dependency map
+        dpVisitor = DependencyMapVisitor(self.getFunctions(), self.getStateVariables())
+        dpVisitor.visit(ast)
+        self.setDependencyMap(dpVisitor.dependencyMap)
+        print self.getDependencyMap()
 
     # Write instrumented program to a file
     def writeOutFile(self,suite,outFile):
@@ -112,6 +120,9 @@ class Generator():
     def setStateVariables(self,stateVariables):
         self.__stateVariables=stateVariables
 
+    def setDependencyMap(self,dependencyMap):
+        self.__dependencyMap=dependencyMap
+
     # Getters for global variables
     def getProgram(self):
         return self.__program
@@ -121,6 +132,9 @@ class Generator():
 
     def getStateVariables(self):
         return self.__stateVariables
+
+    def getDependencyMap(self):
+        return self.__dependencyMap
 
 def main(argv):
     generator = Generator()

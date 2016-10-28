@@ -1,5 +1,68 @@
+# Gregory Gay (greg@greggay.com)
+# Visitors that crawl the AST of the C program to pull function and state 
+# information and generate the dependency map
+
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+
 import sys
 from pycparser import c_ast, c_generator
+
+class DependencyMapVisitor(c_ast.NodeVisitor):
+
+    # Dependency Map
+    dependencyMap=[]
+    # Generator to get C code from a node
+    generator = c_generator.CGenerator()
+    # List of functions
+    functions=[]
+    # List of state variables
+    stateVariables=[]
+    # Current function being examined
+    currentFunction=[]
+    # Variable status flag
+    status="use"
+
+    def __init__(self,functions,stateVariables):
+        self.functions=functions
+        self.stateVariables=stateVariables
+
+    # When we hit a function definition, grab the function code and look for defs and uses of state variables.
+    def visit_FuncDef(self, node):
+        # Discard anything seen before we started examining this function
+        self.currentFunction=[]
+        self.currentFunction.append(node.decl.name)
+        # Add empty variable mapping
+        self.currentFunction.append([])
+        # Crawl through function body for variables uses/defs
+        self.visit(node.body)
+        # Add to map
+        self.dependencyMap.append(self.currentFunction)
+        self.currentFunction=[]
+
+    # When we hit an assignment, flip the flag to "def" instead of "use"
+    def visit_Assignment(self, node):
+        if "obligations" not in self.generator.visit(node.lvalue):
+            # LHS is the variable being assigned
+            self.status="def"
+            self.visit(node.lvalue)
+            # Reset before moving on
+            self.status="use"
+            self.visit(node.rvalue)
+
+    # When we visit a variable reference, add it to the list, along with its status.
+    def visit_ID(self, node):
+        if node.name!="obligations" and node.name!="scoreEpsilon":
+            found=0
+            for var in self.stateVariables:
+                if node.name == var[0]:
+                    found=1
+                    break  
+ 
+            if found==1:
+                self.currentFunction[1].append([node.name,self.status])
 
 class ProgramDataVisitor(c_ast.NodeVisitor):
 
