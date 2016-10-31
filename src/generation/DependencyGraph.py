@@ -44,13 +44,36 @@ class DependencyMapVisitor(c_ast.NodeVisitor):
 
     # When we hit an assignment, flip the flag to "def" instead of "use"
     def visit_Assignment(self, node):
-        if "obligations" not in self.generator.visit(node.lvalue):
-            # LHS is the variable being assigned
-            self.status="def"
+        # Make sure this is an "=" assignment. "+=", etc count as uses for our purposes (initialization check)
+        if node.op == "=":
+            if "obligations" not in self.generator.visit(node.lvalue):
+                # LHS is the variable being assigned
+                self.status="def"
+                self.visit(node.lvalue)
+                # Reset before moving on
+                self.status="use"
+                self.visit(node.rvalue)
+        else:
             self.visit(node.lvalue)
-            # Reset before moving on
-            self.status="use"
             self.visit(node.rvalue)
+
+    # Do the same for unary operations that make assignments.
+    # Note that these are both defs and uses
+    #def visit_UnaryOp(self, node):
+    #    if "++" in node.op or "--" in node.op:
+    #        self.status="def"
+    #    self.visit(node.expr)
+    #    self.status="use"
+
+    # We want to record function calls as well to indicate dependencies.
+    # Function arguments can also use state variables
+    def visit_FuncCall(self, node):
+        self.currentFunction[1].append([node.name.name,"function"])
+        args=self.generator.visit(node.args)
+        for var in self.stateVariables:
+            if var[0] in args:
+                self.currentFunction[1].append([var[0],"use"])
+                break
 
     # When we visit a variable reference, add it to the list, along with its status.
     def visit_ID(self, node):

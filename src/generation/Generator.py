@@ -33,7 +33,7 @@ class Generator():
             raise Exception("No program set for generation.")
 
         # Read in program and get list of functions and state variables.
-        if self.getFunctions()==[] or __stateVariables==[]:
+        if self.getFunctions()==[] or self.getStateVariables()==[] or self.getDependencyMap()==[]:
             self.initializeProgramData()
 
         # Generate test cases
@@ -98,8 +98,74 @@ class Generator():
         # Use the DependencyMapVisitor to build the dependency map
         dpVisitor = DependencyMapVisitor(self.getFunctions(), self.getStateVariables())
         dpVisitor.visit(ast)
-        self.setDependencyMap(dpVisitor.dependencyMap)
+        sequenceMap=dpVisitor.dependencyMap
+        print sequenceMap
+ 
+        dependencyMap=[]
+        # SequenceMap is a list of defs and uses in order. Transform this into the dependency map, just a simple
+        # list of variables that must be initialized before the function can be called.
+        for function in sequenceMap:
+            clearList=self.buildClearList()
+            dependencyMap.append(self.processSequence(clearList, function[0], function[1],sequenceMap))
+
+        self.setDependencyMap(dependencyMap)
         print self.getDependencyMap()
+
+    # Process sequence and return a dependency list
+    def processSequence(self, clearList, function, sequence, sequenceMap):
+        dependencyEntry=[function,[],[]]
+        seen=[function]
+        # Go through each interaction.
+        seqLen=len(sequence)
+        interaction=0
+        while interaction < seqLen:
+            # If we've seen it already, skip it
+            if sequence[interaction][0] not in dependencyEntry[1] or sequence[interaction][0] not in dependencyEntry[2]:
+                # It will either be a def, a use, or a function call
+                if sequence[interaction][1] == "def":
+                    # Mark it as init
+                    for entry in range(0,len(clearList)):
+                        if clearList[entry][0] == sequence[interaction][0]:
+                            clearList[entry] = [clearList[entry][0],"init"]
+                            if sequence[interaction][0] not in dependencyEntry[2]:
+                                dependencyEntry[2].append(sequence[interaction][0])
+                            break
+                elif sequence[interaction][1] == "use":
+                    # If the variable is uninit, then we depend on it being initialized by another function first.
+                    for entry in clearList:
+                        if entry[0] == sequence[interaction][0]:
+                            if entry[1] == "uninit":
+                                if sequence[interaction][0] not in dependencyEntry[1]:
+                                    dependencyEntry[1].append(sequence[interaction][0])
+                            break
+                elif sequence[interaction][1] == "function":
+                    # If a function is called, put in its interactions and process them.
+                    # Only append a function once - if a variable is uninitialized the first time, it doesn't matter if we call it again.
+                    if sequence[interaction][0] not in seen:
+                        seen.append(sequence[interaction][0])
+                        for toInline in sequenceMap:
+                            if toInline[0] == sequence[interaction][0]:
+                                # Add interactions to the list
+                                for line in range(0,len(toInline[1])):
+                                    sequence.insert(interaction+line+1,toInline[1][line])
+                                seqLen = len(sequence)
+                                break
+            
+            interaction+=1
+
+        return dependencyEntry
+
+    # Build the clear list - a list of global variables that are safe to use.
+    def buildClearList(self):
+        clearList=[]
+        for var in self.getStateVariables():
+            if var[3] =='':
+                # No initialized value, so not safe
+                clearList.append([var[0],"uninit"])
+            else:
+                clearList.append([var[0],"init"])
+ 
+        return clearList
 
     # Write instrumented program to a file
     def writeOutFile(self,suite,outFile):
