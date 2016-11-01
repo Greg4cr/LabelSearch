@@ -4,6 +4,8 @@
 # Command line options:
 # -p <instrumented program>
 # -o <name of test suite>
+# -m <maximum test suite size, default is 25>
+# -s <seed for random number generator>
 
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -12,6 +14,8 @@
 import getopt
 import sys
 import os
+import random
+from subprocess import call
 from pycparser import parse_file, c_parser, c_ast
 from DependencyGraph import *
 
@@ -25,6 +29,8 @@ class Generator():
     __stateVariables=[]
     # Dependency map for state information
     __dependencyMap=[]
+    # Max suite size
+    maxSuiteSize=25
 
     # Central process of instrumentation
     def generate(self,outFile):
@@ -37,52 +43,98 @@ class Generator():
             self.initializeProgramData()
 
         # Generate test cases
-        tests=[]
-        # Pass in function list
-        # For each unit test, call functions from list, decide whether to add additional method calls
-
+        suite=self.buildSuite()
+        print(suite)
         # Build suite code
-        suite=self.buildSuite(tests,outFile)
+        code=self.buildCode(suite,outFile)
  
         # Print test suite to file
-        self.writeOutFile(suite,outFile)
+        self.writeOutFile(code,outFile)
+
+    # Build test suite
+    def buildSuite(self):
+        suite=[]
+        done=0
+
+        while done == 0:
+            # Suite length
+            length=0
+            # Use a degrading temperature to control the probability of adding an additional test
+            temperature=float((self.maxSuiteSize-len(suite)))/float(self.maxSuiteSize)
+            print(temperature)
+            if random.random() < temperature: 
+                # Add a stateless or stateful test
+                if random.random() < 0.5:
+                    print("stateless")
+                    # Stateless test
+                    # Choose a function that does not affect global state
+                    index=random.randint(0,len(self.getDependencyMap()[1])-1)
+                    functionName=self.getDependencyMap()[1][index][0]
+                    
+                    # Find function
+                    for function in self.getFunctions():
+                        if function[0] == functionName:
+                            returnType=function[1][0]
+                            inputs=function[2]
+
+                    test="void test"+str(len(suite)+1)+"(){\n"
+                    call="    "
+                    # If return is not void, assign it to a variable
+                    if returnType != "void":
+                        call=call+returnType+" call"+str(length)+" = "
+
+                    call=call+functionName+"("
+                    # Generate inputs
+                    for inputChoice in inputs: 
+                        call=call+inputChoice+", "
+                    call=call[:len(call)-2]+");\n"
+                    test=test+call
+                    test=test+"}\n\n"
+                    suite.append(test)
+                else:
+                    # Stateful test
+                    print("stateful")
+            else:
+               done = 1
+            
+        return suite
 
     # Build suite code
-    def buildSuite(self,tests,outFile):
-        suite=[]
+    def buildCode(self,suite,outFile):
+        code=[]
         # Add includes statements
-        suite.append("#include <stdio.h>")
-        suite.append("#include \""+self.getProgram()+"\"")
+        code.append("#include <stdio.h>")
+        code.append("#include \""+self.getProgram()+"\"")
 
         # Declare test array
-        suite.append("\n// Array indexing test entries.\n// tests[0] indicates number of tests\n// tests[1] corresponds to test1(), etc.")
-	testDecl="int tests["+str(len(tests)+1)+"]={"+str(len(tests))
-        for test in range(0,len(tests)):
+        code.append("\n// Array indexing test entries.\n// tests[0] indicates number of tests\n// tests[1] corresponds to test1(), etc.")
+	testDecl="int tests["+str(len(suite)+1)+"]={"+str(len(suite))
+        for test in range(0,len(suite)):
             testDecl+=",1"
-        suite.append(testDecl+"};")
+        code.append(testDecl+"};")
 
         # Add code for printing to screen/file and resetting obligation scores.
 
-        suite.append("\n// Flag for printing obligation scores to a CSV file at the end of execution.\nint print = 1;\nchar* fileName = \""+outFile+"sv\";\n\n// Flag for printing obligation scores to the screen at the end of execution.\nint screen = 1;\n\n// Prints obligation scores to the screen\nvoid printScoresToScreen(){\n    printf(\"# Obligation, Score (Unnormalized)\\n\");\n    int obligation;\n    for(obligation=1; obligation<=obligations[0]; obligation++){\n        printf(\"%d, %f\\n\",obligation,obligations[obligation]);\n    }\n}\n\n// Prints obligation scores to a file\nvoid printScoresToFile(){\n    FILE *outFile = fopen(fileName,\"w\");\n    fprintf(outFile, \"# Obligation, Score (Unnormalized)\\n\");\n    int obligation;\n    for(obligation=1; obligation<=obligations[0]; obligation++){\n        fprintf(outFile,\"%d, %f\\n\",obligation,obligations[obligation]);\n    }\n    fclose(outFile);\n}\n\n// Resets obligation scores\nvoid resetObligationScores(){\n    int obligation;\n    for(obligation=1; obligation<=obligations[0]; obligation++){\n        // Set to some high level\n        obligations[obligation] = 1000000.0;\n    }\n}\n")
+        code.append("\n// Flag for printing obligation scores to a CSV file at the end of execution.\nint print = 1;\nchar* fileName = \""+outFile+"sv\";\n\n// Flag for printing obligation scores to the screen at the end of execution.\nint screen = 1;\n\n// Prints obligation scores to the screen\nvoid printScoresToScreen(){\n    printf(\"# Obligation, Score (Unnormalized)\\n\");\n    int obligation;\n    for(obligation=1; obligation<=obligations[0]; obligation++){\n        printf(\"%d, %f\\n\",obligation,obligations[obligation]);\n    }\n}\n\n// Prints obligation scores to a file\nvoid printScoresToFile(){\n    FILE *outFile = fopen(fileName,\"w\");\n    fprintf(outFile, \"# Obligation, Score (Unnormalized)\\n\");\n    int obligation;\n    for(obligation=1; obligation<=obligations[0]; obligation++){\n        fprintf(outFile,\"%d, %f\\n\",obligation,obligations[obligation]);\n    }\n    fclose(outFile);\n}\n\n// Resets obligation scores\nvoid resetObligationScores(){\n    int obligation;\n    for(obligation=1; obligation<=obligations[0]; obligation++){\n        // Set to some high level\n        obligations[obligation] = 1000000.0;\n    }\n}\n")
 
         # Add state reset
-        suite.append(self.buildReset())
+        code.append(self.buildReset())
 
-        suite.append("// Test Cases\n")
+        code.append("// Test Cases\n")
 
 	# Append test case code
-        for test in range(0,len(tests)):
-            suite.append(tests[test])
+        for test in range(0,len(suite)):
+            code.append(suite[test])
 
         # Append test runner and main
-        suite.append("// Top-level test runner.\nvoid runner(){\n")
-        for test in range(0,len(tests)):
-            suite.append("    if(tests["+str(test)+"] == 1)")
-            suite.append("        test"+test+"();")
+        code.append("// Top-level test runner.\nvoid runner(){\n")
+        for test in range(0,len(suite)):
+            code.append("    if(tests["+str(test)+"] == 1)")
+            code.append("        test"+str(test)+"();")
 
-        suite.append("\n    if(screen == 1)\n        printScoresToScreen();\n    if(print == 1)\n        printScoresToFile();\n}\n\nint main(){\n    runner();\n    return(0);\n}\n")
+        code.append("\n    if(screen == 1)\n        printScoresToScreen();\n    if(print == 1)\n        printScoresToFile();\n}\n\nint main(){\n    runner();\n    return(0);\n}\n")
 
-        return suite
+        return code
 
     # Take the list of global variables and build a state reset function that can be called by test cases.
     def buildReset(self):
@@ -192,10 +244,10 @@ class Generator():
         return clearList
 
     # Write instrumented program to a file
-    def writeOutFile(self,suite,outFile):
+    def writeOutFile(self,code,outFile):
         where = open(outFile, 'w')
        
-        for line in suite:
+        for line in code:
             where.write(line+"\n")
 
         where.close()
@@ -230,16 +282,18 @@ def main(argv):
     generator = Generator()
     program = ""
     outFile = ""
+    maxSuiteSize = 25
+    seed=1
 
     try:
-        opts, args = getopt.getopt(argv,"hp:o:")
+        opts, args = getopt.getopt(argv,"hp:o:m:s:")
     except getopt.GetoptError:
-        print 'Generator.py -p <program name> -o <output filename>'
+        print 'Generator.py -p <program name> -o <output filename> -m <max suite size> -s <seed for RNG>'
       	sys.exit(2)
   		
     for opt, arg in opts:
         if opt == "-h":
-            print 'Generator.py -p <program name> -o <output filename>'
+            print 'Generator.py -p <program name> -o <output filename> -s <max suite size> -s <seed for RNG>'
             sys.exit()
       	elif opt == "-p":
             if arg == "":
@@ -248,6 +302,12 @@ def main(argv):
                 program = arg
         elif opt == "-o":
             outFile = arg
+        elif opt == "-m":
+            maxSuiteSize = int(arg)
+        elif opt =="-s":
+            seed= float(arg)
+
+    random.seed(seed)
 
     if outFile == "":
         outFile = program[:program.index(".c")]+"_suite.c"
@@ -255,6 +315,7 @@ def main(argv):
     if program == '':
         raise Exception('No program specified')
     else:
+        generator.maxSuiteSize=maxSuiteSize
         generator.setProgram(program)
 	generator.generate(outFile)
 
