@@ -65,6 +65,9 @@ class Generator():
 
         suite.append("\n// Flag for printing obligation scores to a CSV file at the end of execution.\nint print = 1;\nchar* fileName = \""+outFile+"sv\";\n\n// Flag for printing obligation scores to the screen at the end of execution.\nint screen = 1;\n\n// Prints obligation scores to the screen\nvoid printScoresToScreen(){\n    printf(\"# Obligation, Score (Unnormalized)\\n\");\n    int obligation;\n    for(obligation=1; obligation<=obligations[0]; obligation++){\n        printf(\"%d, %f\\n\",obligation,obligations[obligation]);\n    }\n}\n\n// Prints obligation scores to a file\nvoid printScoresToFile(){\n    FILE *outFile = fopen(fileName,\"w\");\n    fprintf(outFile, \"# Obligation, Score (Unnormalized)\\n\");\n    int obligation;\n    for(obligation=1; obligation<=obligations[0]; obligation++){\n        fprintf(outFile,\"%d, %f\\n\",obligation,obligations[obligation]);\n    }\n    fclose(outFile);\n}\n\n// Resets obligation scores\nvoid resetObligationScores(){\n    int obligation;\n    for(obligation=1; obligation<=obligations[0]; obligation++){\n        // Set to some high level\n        obligations[obligation] = 1000000.0;\n    }\n}\n")
 
+        # Add state reset
+        suite.append(self.buildReset())
+
         suite.append("// Test Cases\n")
 
 	# Append test case code
@@ -80,6 +83,21 @@ class Generator():
         suite.append("\n    if(screen == 1)\n        printScoresToScreen();\n    if(print == 1)\n        printScoresToFile();\n}\n\nint main(){\n    runner();\n    return(0);\n}\n")
 
         return suite
+
+    # Take the list of global variables and build a state reset function that can be called by test cases.
+    def buildReset(self):
+        code="// Resets values of all state values with declared initial values.\nvoid resetStateVariables(){\n"
+        for var in self.getStateVariables():
+            if var[3] !='':
+                # Has an initial value.
+                if var[1]=="var" or var[1] =="pointer":
+                    code=code+"    "+var[0]+" = "+var[3]+";\n"
+                elif var[1]=="array":
+                    values=var[3].strip().split(",")
+                    for index in range(0,len(values)):
+                        code=code+"    "+var[0]+"["+str(index)+"] = "+str(values[index]).strip()+";\n"
+        code=code+"}\n\n"
+        return code
 
     # Read in C file and get list of functions and state variables from it.
     def initializeProgramData(self):
@@ -101,12 +119,18 @@ class Generator():
         sequenceMap=dpVisitor.dependencyMap
         print sequenceMap
  
-        dependencyMap=[]
+        # Dependency map has two lists - stateful functions and stateless functions
+        dependencyMap=[[],[]]
         # SequenceMap is a list of defs and uses in order. Transform this into the dependency map, just a simple
         # list of variables that must be initialized before the function can be called.
         for function in sequenceMap:
             clearList=self.buildClearList()
-            dependencyMap.append(self.processSequence(clearList, function[0], function[1],sequenceMap))
+            dependencyEntry=self.processSequence(clearList, function[0], function[1],sequenceMap)
+            # If the uses and provides lists are empty, this is not a state-based function
+            if dependencyEntry[1]==[] and dependencyEntry[2]==[]:
+                dependencyMap[1].append(dependencyEntry)
+            else:
+                dependencyMap[0].append(dependencyEntry)
 
         self.setDependencyMap(dependencyMap)
         print self.getDependencyMap()
