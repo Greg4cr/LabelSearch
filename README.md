@@ -14,9 +14,13 @@ Progress
 ------------------------
 
 * Instrumentation - Complete
-* Test Suite Structure - In Progress
-* Input Generation - To Do
-* Genetic Algorithm - To Do
+* Individual Suite Generation - In Progress
+** Test Suite Structure - Complete
+** Test Specification Generation - Complete
+** Concrete Input Generation - To Do
+** Removal of Non-Compiling Tests - To Do
+** Suite Minimization - To Do
+* Metaheuristic Search - To Do
 
 Currently, we support basic label coverage. In the future, we plan to extend this to include hyperlabels.
 

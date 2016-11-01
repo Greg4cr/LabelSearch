@@ -130,7 +130,7 @@ class ProgramDataVisitor(c_ast.NodeVisitor):
                 var.append(self.generator.visit(node.init))
                 self.stateVariables.append(var)
             if type(node.type) is c_ast.ArrayDecl:
-                var.append("array")
+                var.append("array,"+str(node.type.dim.value))
                 # Type
                 var.append(node.type.type.type.names)
                 # Initial Value

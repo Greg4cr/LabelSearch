@@ -4,6 +4,7 @@
 # Command line options:
 # -p <instrumented program>
 # -o <name of test suite>
+# -l <maximum single test length, default is 10 steps (assignments or calls)>
 # -m <maximum test suite size, default is 25>
 # -s <seed for random number generator>
 
@@ -31,6 +32,8 @@ class Generator():
     __dependencyMap=[]
     # Max suite size
     maxSuiteSize=25
+    # Max test length
+    maxLength=10
 
     # Central process of instrumentation
     def generate(self,outFile):
@@ -57,15 +60,13 @@ class Generator():
         done=0
 
         while done == 0:
-            # Suite length
+            # Test length
             length=0
             # Use a degrading temperature to control the probability of adding an additional test
             temperature=float((self.maxSuiteSize-len(suite)))/float(self.maxSuiteSize)
-            print(temperature)
             if random.random() < temperature: 
                 # Add a stateless or stateful test
                 if random.random() < 0.5:
-                    print("stateless")
                     # Stateless test
                     # Choose a function that does not affect global state
                     index=random.randint(0,len(self.getDependencyMap()[1])-1)
@@ -76,6 +77,7 @@ class Generator():
                         if function[0] == functionName:
                             returnType=function[1][0]
                             inputs=function[2]
+                            break
 
                     test="void test"+str(len(suite)+1)+"(){\n"
                     call="    "
@@ -93,7 +95,110 @@ class Generator():
                     suite.append(test)
                 else:
                     # Stateful test
-                    print("stateful")
+                    # Get the list of clear global variables
+                    clearVars=self.buildClearList()
+                    # Build initial test declaration
+                    test="void test"+str(len(suite)+1)+"(){\n    resetStateVariables();\n"
+
+                    # Set the length temperature
+                    ldone=0
+                    while ldone == 0:
+                        ltemperature=float((self.maxLength-length))/float(self.maxLength)
+
+                        # Continue adding steps as long as random < ltemperature
+                        if random.random() < ltemperature: 
+                            # Can either make an assignment or call a function
+                            actionTaken=0
+                            makeAssignment=0
+                            while actionTaken==0:
+                                if random.random() < 0.5 or makeAssignment == 1:
+                                    # Make an assignment
+                                    call="    "
+                                    # Choose a state variable
+                                    index=random.randint(0,len(self.getStateVariables())-1)
+                                    var=self.getStateVariables()[index]
+                                    
+                                    if var[1]=="var":
+                                        call=call+var[0]+" = "+var[2][0]+";\n"
+                                    elif var[1]=="pointer":
+                                        call=call+var[0]+" = *"+var[2][0]+";\n"
+                                    elif "array" in var[1]:
+                                        # If an array, pick an index to assign to
+                                        aindex=random.randint(0,int(var[1].split(",")[1])-1)
+                                        call=call+var[0]+"["+str(aindex)+"] = "+var[2][0]+";\n"
+
+                                    test=test+call
+                                    actionTaken=1
+
+                                    # Mark as init in clear var list
+                                    for varIndex in range(0,len(clearVars)):
+                                        if clearVars[varIndex][0]==var[0]:
+                                            clearVars[varIndex][1]="init";
+                                            break
+                                else:
+                                    # Choose a function that can be used with the current clear list
+                                    options=[]
+                                    for index in range(0,len(self.getDependencyMap()[0])):
+                                        options.append(index)
+
+                                    # If no functions can be used, we will make an assignment.
+                                    while len(options) > 0:
+                                        index=random.randint(0,len(self.getDependencyMap()[0])-1)
+                                        if index in options:
+                                            for identifier in range(0,len(options)):
+                                                if options[identifier]==index:
+                                                    options.remove(index)
+                                                    break
+
+                                            functionName=self.getDependencyMap()[0][index][0]
+                            
+                                            # Check its needs against the clear list
+                                            allInit=1
+                                            for entry in self.getDependencyMap()[0][index][1]:
+                                                for var in clearVars:
+                                                    if entry==var[0]:
+                                                        if var[1]=="uninit":
+                                                            allInit=0
+                                                        break
+                                                if allInit==0:
+                                                    break
+
+                                            if allInit==1:
+                                                # This is a function we can use
+                                                # Update clear list
+                                                for provides in self.getDependencyMap()[0][index][2]:
+                                                    for var in range(0,len(clearVars)):
+                                                        if clearVars[var][0]==provides:
+                                                            clearVars[var][1]="init";
+                                                            break
+
+                                                # Find function
+                                                for function in self.getFunctions():
+                                                    if function[0] == functionName:
+                                                        returnType=function[1][0]
+                                                        inputs=function[2]
+                                                        break
+
+                                                call="    "
+                                                # If return is not void, assign it to a variable
+                                                if returnType != "void":
+                                                    call=call+returnType+" call"+str(length)+" = "
+
+                                                call=call+functionName+"("
+                                                # Generate inputs
+                                                for inputChoice in inputs: 
+                                                    call=call+inputChoice+", "
+                                                    call=call[:len(call)-2]+");\n"
+                                                test=test+call
+                                                actionTaken=1
+                                                break
+                                        # If no functions can be used, we will make an assignment.
+                                        makeAssignment=1
+                            length+=1
+                        else:
+                            ldone=1
+                    test=test+"}\n\n"
+                    suite.append(test)
             else:
                done = 1
             
@@ -283,17 +388,18 @@ def main(argv):
     program = ""
     outFile = ""
     maxSuiteSize = 25
+    maxLength = 10
     seed=1
 
     try:
-        opts, args = getopt.getopt(argv,"hp:o:m:s:")
+        opts, args = getopt.getopt(argv,"hp:o:l:m:s:")
     except getopt.GetoptError:
-        print 'Generator.py -p <program name> -o <output filename> -m <max suite size> -s <seed for RNG>'
+        print 'Generator.py -p <program name> -o <output filename> -l <max individual test length> -m <max suite size> -s <seed for RNG>'
       	sys.exit(2)
   		
     for opt, arg in opts:
         if opt == "-h":
-            print 'Generator.py -p <program name> -o <output filename> -s <max suite size> -s <seed for RNG>'
+            print 'Generator.py -p <program name> -o <output filename> -l <max individual test length> -m <max suite size> -s <seed for RNG>'
             sys.exit()
       	elif opt == "-p":
             if arg == "":
@@ -302,11 +408,13 @@ def main(argv):
                 program = arg
         elif opt == "-o":
             outFile = arg
+        elif opt == "-l":
+            maxLength = int(arg)
         elif opt == "-m":
             maxSuiteSize = int(arg)
         elif opt =="-s":
             seed= float(arg)
-
+        
     random.seed(seed)
 
     if outFile == "":
@@ -316,6 +424,7 @@ def main(argv):
         raise Exception('No program specified')
     else:
         generator.maxSuiteSize=maxSuiteSize
+        generator.maxLength=maxLength
         generator.setProgram(program)
 	generator.generate(outFile)
 
