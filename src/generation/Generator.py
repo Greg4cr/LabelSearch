@@ -12,6 +12,11 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+#TODO
+# Arrays - if uninit, initialize whole array instead of just one value. If init, either do whole or one index.
+# Allow use of assigned variabled defined in tests as input to other tests.
+# Wider variety of supported input
+
 import getopt
 import sys
 import os
@@ -19,6 +24,7 @@ import random
 from subprocess import call
 from pycparser import parse_file, c_parser, c_ast
 from DependencyGraph import *
+from SimpleGenerators import *
 
 class Generator(): 
 
@@ -58,6 +64,7 @@ class Generator():
     def buildSuite(self):
         suite=[]
         done=0
+        generator = GeneratorFactory()
 
         while done == 0:
             # Test length
@@ -88,7 +95,7 @@ class Generator():
                     call=call+functionName+"("
                     # Generate inputs
                     for inputChoice in inputs: 
-                        call=call+inputChoice+", "
+                        call=call+generator.generate(inputChoice.strip().split()[0])+", "
                     call=call[:len(call)-2]+");\n"
                     test=test+call
                     test=test+"}\n\n"
@@ -119,13 +126,13 @@ class Generator():
                                     var=self.getStateVariables()[index]
                                     
                                     if var[1]=="var":
-                                        call=call+var[0]+" = "+var[2][0]+";\n"
+                                        call=call+var[0]+" = "+generator.generate(var[2][0])+";\n"
                                     elif var[1]=="pointer":
-                                        call=call+var[0]+" = *"+var[2][0]+";\n"
+                                        call=call+var[0]+" = "+generator.generate("*"+var[2][0])+";\n"
                                     elif "array" in var[1]:
                                         # If an array, pick an index to assign to
                                         aindex=random.randint(0,int(var[1].split(",")[1])-1)
-                                        call=call+var[0]+"["+str(aindex)+"] = "+var[2][0]+";\n"
+                                        call=call+var[0]+"["+str(aindex)+"] = "+generator.generate(var[2][0])+";\n"
 
                                     test=test+call
                                     actionTaken=1
@@ -187,7 +194,7 @@ class Generator():
                                                 call=call+functionName+"("
                                                 # Generate inputs
                                                 for inputChoice in inputs: 
-                                                    call=call+inputChoice+", "
+                                                    call=call+generator.generate(inputChoice)+", "
                                                     call=call[:len(call)-2]+");\n"
                                                 test=test+call
                                                 actionTaken=1
@@ -233,7 +240,7 @@ class Generator():
 
         # Append test runner and main
         code.append("// Top-level test runner.\nvoid runner(){\n")
-        for test in range(0,len(suite)):
+        for test in range(1,len(suite)+1):
             code.append("    if(tests["+str(test)+"] == 1)")
             code.append("        test"+str(test)+"();")
 
@@ -389,17 +396,16 @@ def main(argv):
     outFile = ""
     maxSuiteSize = 25
     maxLength = 10
-    seed=1
 
     try:
-        opts, args = getopt.getopt(argv,"hp:o:l:m:s:")
+        opts, args = getopt.getopt(argv,"hp:o:l:m:")
     except getopt.GetoptError:
-        print 'Generator.py -p <program name> -o <output filename> -l <max individual test length> -m <max suite size> -s <seed for RNG>'
+        print 'Generator.py -p <program name> -o <output filename> -l <max individual test length> -m <max suite size>'
       	sys.exit(2)
   		
     for opt, arg in opts:
         if opt == "-h":
-            print 'Generator.py -p <program name> -o <output filename> -l <max individual test length> -m <max suite size> -s <seed for RNG>'
+            print 'Generator.py -p <program name> -o <output filename> -l <max individual test length> -m <max suite size>'
             sys.exit()
       	elif opt == "-p":
             if arg == "":
@@ -412,10 +418,6 @@ def main(argv):
             maxLength = int(arg)
         elif opt == "-m":
             maxSuiteSize = int(arg)
-        elif opt =="-s":
-            seed= float(arg)
-        
-    random.seed(seed)
 
     if outFile == "":
         outFile = program[:program.index(".c")]+"_suite.c"
