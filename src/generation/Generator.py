@@ -13,8 +13,6 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 #TODO
-# Reset state vars - skip if none have declared initial values
-# Arrays - if uninit, initialize whole array instead of just one value. If init, either do whole or one index.
 # Allow use of assigned variabled defined in tests as input to other tests.
 # Wider variety of supported input
 
@@ -161,9 +159,22 @@ class Generator():
                         elif var[1]=="pointer":
                             call=call+var[0]+" = "+inputGenerator.generate("*"+var[2][0])+";\n"
                         elif "array" in var[1]:
-                            # If an array, pick an index to assign to
-                            aindex=random.randint(0,int(var[1].split(",")[1])-1)
-                            call=call+var[0]+"["+str(aindex)+"] = "+inputGenerator.generate(var[2][0])+";\n"
+                            # If the array is uninit, assign values to whole array
+                            # Otherwise, either choose an index or assign values
+                            initWhole=random.random()
+                            for varInit in clearVars:
+                                if varInit[0]==var[0]:
+                                    if varInit[1]=="uninit":
+                                        initWhole=1
+                                        break
+                            
+                            if initWhole > 0.5:
+                                for index in range(0,int(var[1].split(",")[1])):
+                                    call=call+var[0]+"["+str(index)+"] = "+inputGenerator.generate(var[2][0])+";\n    "
+                                call=call[:len(call)-4]
+                            else: 
+                                aindex=random.randint(0,int(var[1].split(",")[1])-1)
+                                call=call+var[0]+"["+str(aindex)+"] = "+inputGenerator.generate(var[2][0])+";\n"
 
                         test=test+call
                         actionTaken=1
@@ -289,6 +300,7 @@ class Generator():
                     for index in range(0,len(values)):
                         code=code+"    "+var[0]+"["+str(index)+"] = "+str(values[index]).strip()+";\n"
         code=code+"}\n\n"
+
         return code
 
     # Read in C file and get list of functions and state variables from it.
