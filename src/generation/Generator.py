@@ -13,6 +13,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 #TODO
+# Reset state vars - skip if none have declared initial values
 # Arrays - if uninit, initialize whole array instead of just one value. If init, either do whole or one index.
 # Allow use of assigned variabled defined in tests as input to other tests.
 # Wider variety of supported input
@@ -67,149 +68,176 @@ class Generator():
         generator = GeneratorFactory()
 
         while done == 0:
-            # Test length
-            length=0
             # Use a degrading temperature to control the probability of adding an additional test
             temperature=float((self.maxSuiteSize-len(suite)))/float(self.maxSuiteSize)
             if random.random() < temperature: 
-                # Add a stateless or stateful test
-                if random.random() < 0.5:
-                    # Stateless test
-                    # Choose a function that does not affect global state
-                    index=random.randint(0,len(self.getDependencyMap()[1])-1)
-                    functionName=self.getDependencyMap()[1][index][0]
-                    
-                    # Find function
-                    for function in self.getFunctions():
-                        if function[0] == functionName:
-                            returnType=function[1][0]
-                            inputs=function[2]
-                            break
+                chance=random.random()
+                numStateful=len(self.getDependencyMap()[0])
+                numStateless=len(self.getDependencyMap()[1])
+ 
+                # Add a stateless test if the random number is less than 0.5
+                # Or, if there are only stateless funtions 
 
-                    test="void test"+str(len(suite)+1)+"(){\n"
-                    call="    "
-                    # If return is not void, assign it to a variable
-                    if returnType != "void":
-                        call=call+returnType+" call"+str(length)+" = "
-
-                    call=call+functionName+"("
-                    # Generate inputs
-                    for inputChoice in inputs: 
-                        call=call+generator.generate(inputChoice.strip().split()[0])+", "
-                    call=call[:len(call)-2]+");\n"
-                    test=test+call
-                    test=test+"}\n\n"
-                    suite.append(test)
+                # If there are no functions to choose from, throw an exception
+                if numStateful == 0 and numStateless == 0:
+                    raise Exception("There are no functions to test")  
+                # If there are no state-affecting functions, choose a stateless one
+                elif numStateful == 0:
+                    suite.append(self.buildStatelessTest(generator,str(len(suite)+1)))
+                # If there are no stateless functions, choose a stateful one 
+                elif numStateless == 0:
+                    suite.append(self.buildStatefulTest(generator,str(len(suite)+1)))
+                # If there are both, decide based on random number
                 else:
-                    # Stateful test
-                    # Get the list of clear global variables
-                    clearVars=self.buildClearList()
-                    # Build initial test declaration
-                    test="void test"+str(len(suite)+1)+"(){\n    resetStateVariables();\n"
-
-                    # Set the length temperature
-                    ldone=0
-                    while ldone == 0:
-                        ltemperature=float((self.maxLength-length))/float(self.maxLength)
-
-                        # Continue adding steps as long as random < ltemperature
-                        if random.random() < ltemperature: 
-                            # Can either make an assignment or call a function
-                            actionTaken=0
-                            makeAssignment=0
-                            while actionTaken==0:
-                                if random.random() < 0.5 or makeAssignment == 1:
-                                    # Make an assignment
-                                    call="    "
-                                    # Choose a state variable
-                                    index=random.randint(0,len(self.getStateVariables())-1)
-                                    var=self.getStateVariables()[index]
-                                    
-                                    if var[1]=="var":
-                                        call=call+var[0]+" = "+generator.generate(var[2][0])+";\n"
-                                    elif var[1]=="pointer":
-                                        call=call+var[0]+" = "+generator.generate("*"+var[2][0])+";\n"
-                                    elif "array" in var[1]:
-                                        # If an array, pick an index to assign to
-                                        aindex=random.randint(0,int(var[1].split(",")[1])-1)
-                                        call=call+var[0]+"["+str(aindex)+"] = "+generator.generate(var[2][0])+";\n"
-
-                                    test=test+call
-                                    actionTaken=1
-
-                                    # Mark as init in clear var list
-                                    for varIndex in range(0,len(clearVars)):
-                                        if clearVars[varIndex][0]==var[0]:
-                                            clearVars[varIndex][1]="init";
-                                            break
-                                else:
-                                    # Choose a function that can be used with the current clear list
-                                    options=[]
-                                    for index in range(0,len(self.getDependencyMap()[0])):
-                                        options.append(index)
-
-                                    # If no functions can be used, we will make an assignment.
-                                    while len(options) > 0:
-                                        index=random.randint(0,len(self.getDependencyMap()[0])-1)
-                                        if index in options:
-                                            for identifier in range(0,len(options)):
-                                                if options[identifier]==index:
-                                                    options.remove(index)
-                                                    break
-
-                                            functionName=self.getDependencyMap()[0][index][0]
-                            
-                                            # Check its needs against the clear list
-                                            allInit=1
-                                            for entry in self.getDependencyMap()[0][index][1]:
-                                                for var in clearVars:
-                                                    if entry==var[0]:
-                                                        if var[1]=="uninit":
-                                                            allInit=0
-                                                        break
-                                                if allInit==0:
-                                                    break
-
-                                            if allInit==1:
-                                                # This is a function we can use
-                                                # Update clear list
-                                                for provides in self.getDependencyMap()[0][index][2]:
-                                                    for var in range(0,len(clearVars)):
-                                                        if clearVars[var][0]==provides:
-                                                            clearVars[var][1]="init";
-                                                            break
-
-                                                # Find function
-                                                for function in self.getFunctions():
-                                                    if function[0] == functionName:
-                                                        returnType=function[1][0]
-                                                        inputs=function[2]
-                                                        break
-
-                                                call="    "
-                                                # If return is not void, assign it to a variable
-                                                if returnType != "void":
-                                                    call=call+returnType+" call"+str(length)+" = "
-
-                                                call=call+functionName+"("
-                                                # Generate inputs
-                                                for inputChoice in inputs: 
-                                                    call=call+generator.generate(inputChoice)+", "
-                                                    call=call[:len(call)-2]+");\n"
-                                                test=test+call
-                                                actionTaken=1
-                                                break
-                                        # If no functions can be used, we will make an assignment.
-                                        makeAssignment=1
-                            length+=1
-                        else:
-                            ldone=1
-                    test=test+"}\n\n"
-                    suite.append(test)
+                    if chance < 0.5:
+                        suite.append(self.buildStatelessTest(generator,str(len(suite)+1)))
+                    else:
+                        suite.append(self.buildStatefulTest(generator,str(len(suite)+1)))
+              
             else:
                done = 1
             
         return suite
+
+    # Build a non-state-affecting test case
+    def buildStatelessTest(self,inputGenerator,testID):
+        # Choose a function that does not affect global state
+        index=random.randint(0,len(self.getDependencyMap()[1])-1)
+        functionName=self.getDependencyMap()[1][index][0]
+                    
+        # Find function
+        for function in self.getFunctions():
+            if function[0] == functionName:
+                returnType=function[1][0]
+                inputs=function[2]
+                break
+
+            test="void test"+testID+"(){\n"
+            call="    "
+            # If return is not void, assign it to a variable
+            if returnType != "void":
+                call=call+returnType+" call"+str(length)+" = "
+
+            call=call+functionName+"("
+            # Generate inputs
+            for inputChoice in inputs: 
+                call=call+inputGenerator.generate(inputChoice.strip().split()[0])+", "
+            call=call[:len(call)-2]+");\n"
+            test=test+call
+            test=test+"}\n\n"
+            
+            return test
+ 
+    # Build a state-impacting test case
+    def buildStatefulTest(self,inputGenerator,testID):
+        # Test length
+        length=0
+
+        # Get the list of clear global variables
+        clearVars=self.buildClearList()
+        # Build initial test declaration
+        test="void test"+testID+"(){\n    resetStateVariables();\n"
+
+        # Set the length temperature
+        ldone=0
+        while ldone == 0:
+            ltemperature=float((self.maxLength-length))/float(self.maxLength)
+
+            # Continue adding steps as long as random < ltemperature
+            if random.random() < ltemperature: 
+                # Can either make an assignment or call a function
+                actionTaken=0
+                makeAssignment=0
+                while actionTaken==0:
+                    if random.random() < 0.5 or makeAssignment == 1:
+                        # Make an assignment
+                        call="    "
+                        # Choose a state variable
+                        index=random.randint(0,len(self.getStateVariables())-1)
+                        var=self.getStateVariables()[index]
+                                    
+                        if var[1]=="var":
+                            call=call+var[0]+" = "+inputGenerator.generate(var[2][0])+";\n"
+                        elif var[1]=="pointer":
+                            call=call+var[0]+" = "+inputGenerator.generate("*"+var[2][0])+";\n"
+                        elif "array" in var[1]:
+                            # If an array, pick an index to assign to
+                            aindex=random.randint(0,int(var[1].split(",")[1])-1)
+                            call=call+var[0]+"["+str(aindex)+"] = "+inputGenerator.generate(var[2][0])+";\n"
+
+                        test=test+call
+                        actionTaken=1
+
+                        # Mark as init in clear var list
+                        for varIndex in range(0,len(clearVars)):
+                            if clearVars[varIndex][0]==var[0]:
+                                clearVars[varIndex][1]="init";
+                                break
+                    else:
+                        # Choose a function that can be used with the current clear list
+                        options=[]
+                        for index in range(0,len(self.getDependencyMap()[0])):
+                            options.append(index)
+
+                        # If no functions can be used, we will make an assignment.
+                        while len(options) > 0:
+                            index=random.randint(0,len(self.getDependencyMap()[0])-1)
+                            if index in options:
+                                for identifier in range(0,len(options)):
+                                    if options[identifier]==index:
+                                        options.remove(index)
+                                        break
+
+                                functionName=self.getDependencyMap()[0][index][0]
+                            
+                                # Check its needs against the clear list
+                                allInit=1
+                                for entry in self.getDependencyMap()[0][index][1]:
+                                    for var in clearVars:
+                                        if entry==var[0]:
+                                            if var[1]=="uninit":
+                                                allInit=0
+                                            break
+                                    if allInit==0:
+                                        break
+
+                                if allInit==1:
+                                    # This is a function we can use
+                                    # Update clear list
+                                    for provides in self.getDependencyMap()[0][index][2]:
+                                        for var in range(0,len(clearVars)):
+                                            if clearVars[var][0]==provides:
+                                                clearVars[var][1]="init";
+                                                break
+
+                                    # Find function
+                                    for function in self.getFunctions():
+                                        if function[0] == functionName:
+                                            returnType=function[1][0]
+                                            inputs=function[2]
+                                            break
+
+                                    call="    "
+                                    # If return is not void, assign it to a variable
+                                    if returnType != "void":
+                                        call=call+returnType+" call"+str(length)+" = "
+
+                                    call=call+functionName+"("
+                                    # Generate inputs
+                                    for inputChoice in inputs: 
+                                        call=call+inputGenerator.generate(inputChoice)+", "
+                                        call=call[:len(call)-2]+");\n"
+                                    test=test+call
+                                    actionTaken=1
+                                    break
+                            # If no functions can be used, we will make an assignment.
+                            makeAssignment=1
+                    length+=1
+                else:
+                    ldone=1
+            test=test+"}\n\n"
+            return test
+
 
     # Build suite code
     def buildCode(self,suite,outFile):
