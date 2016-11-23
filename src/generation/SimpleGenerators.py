@@ -16,8 +16,8 @@ class CharGenerator():
 
     def generate(self):
         numRepresentation=random.randint(self.minChar,self.maxChar)
-        charRepresentation=chr(numRepresentation)
-        return "'"+charRepresentation+"'"
+        #charRepresentation=chr(numRepresentation)
+        return str(numRepresentation)
 
 # Returns an empty string for void (no argument) input
 class VoidGenerator():
