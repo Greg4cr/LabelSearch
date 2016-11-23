@@ -8,6 +8,15 @@ class IntGenerator():
     def generate(self):
         return str(random.randint(self.minInt,self.maxInt))
 
+# Simple character generator.
+class CharGenerator():
+    minChar=0
+    maxChar=255
+
+    def generate(self):
+        numRepresentation=random.randint(self.minChar,self.maxChar)
+        return "'"+str(chr(numRepresentation))+"'"
+
 # Returns an empty string for void (no argument) input
 class VoidGenerator():
     def generate(self):
@@ -36,6 +45,7 @@ class AvailableGenerator():
 class GeneratorFactory():
     available = []
     ig = IntGenerator()
+    cg = CharGenerator()
     vg = VoidGenerator()
     ag = AvailableGenerator()
 
@@ -50,6 +60,8 @@ class GeneratorFactory():
                     return self.ig.generate()
             else:
                 return self.ig.generate()
+        elif typeToGenerate == "char" or typeToGenerate == "unsigned char":
+            return self.cg.generate()
         elif typeToGenerate == "void" or typeToGenerate == "":
             return self.vg.generate()
         else:
@@ -60,4 +72,3 @@ class GeneratorFactory():
 # Other primitives
 # Pointers
 # Typedef/struct
-# Arrays of all types (probably handle outside of Generators - keep Generators for each entry
