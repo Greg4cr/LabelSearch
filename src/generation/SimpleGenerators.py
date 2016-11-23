@@ -64,6 +64,17 @@ class GeneratorFactory():
                 return self.ig.generate()
         elif typeToGenerate == "char" or typeToGenerate == "unsigned char":
             return self.cg.generate()
+
+        elif typeToGenerate == "signed char":
+            self.cg.minChar = -128
+            self.cg.maxChar = 127
+  
+            value = self.cg.generate()
+
+            self.cg.minChar = 0
+            self.cg.maxChar = 255
+
+            return value
         elif typeToGenerate == "void" or typeToGenerate == "":
             return self.vg.generate()
         else:
