@@ -13,14 +13,13 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 #TODO
-# Allow use of assigned variabled defined in tests as input to other tests.
-# Allow use of globals as input to other tests
 # Wider variety of supported input
 
 import getopt
 import sys
 import os
 import random
+import copy
 from subprocess import call
 from pycparser import parse_file, c_parser, c_ast
 from DependencyGraph import *
@@ -148,7 +147,7 @@ class Generator():
             # Continue adding steps as long as random < ltemperature
             if random.random() < ltemperature: 
                 # Can either make an assignment or call a function
-                inputGenerator.available=avail
+                inputGenerator.available=self.addClearToAvailable(avail,clearVars)
                 actionTaken=0
                 makeAssignment=0
                 while actionTaken==0:
@@ -256,6 +255,14 @@ class Generator():
         inputGenerator.available=[]
         return test
 
+    # Append initialized global variables to the available list for generation
+    def addClearToAvailable(self,available,clear):
+        combined=copy.deepcopy(available)
+        for var in clear:
+            if var[1] == "init":
+                combined.append([var[0],var[2]])
+
+        return combined
 
     # Build suite code
     def buildCode(self,suite,outFile):
@@ -396,9 +403,9 @@ class Generator():
         for var in self.getStateVariables():
             if var[3] =='':
                 # No initialized value, so not safe
-                clearList.append([var[0],"uninit"])
+                clearList.append([var[0],"uninit",var[2][0]])
             else:
-                clearList.append([var[0],"init"])
+                clearList.append([var[0],"init",var[2][0]])
  
         return clearList
 

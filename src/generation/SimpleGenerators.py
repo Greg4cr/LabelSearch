@@ -17,13 +17,17 @@ class VoidGenerator():
 class AvailableGenerator():
     def generate(self, available, typeToReturn):
         if len(available) > 0:
-            found = 0
-            while found == 0:
-                choice=available[random.randint(0,len(available)-1)]
-                if choice[1] == typeToReturn:
-                    found=1
-       
-            return choice[0]
+            # Build set of options
+            options=[]
+            for option in available:
+                if option[1] == typeToReturn: 
+                    options.append(option)
+                
+            # Choose one from that set
+            if len(options) > 0:
+                return options[random.randint(0,len(options)-1)][0]
+            else:
+                return ""
         else:
             return ""
 
