@@ -1,4 +1,5 @@
 import random
+import string
 
 # Simple integer generator.
 class IntGenerator():
@@ -15,7 +16,8 @@ class CharGenerator():
 
     def generate(self):
         numRepresentation=random.randint(self.minChar,self.maxChar)
-        return "'"+str(chr(numRepresentation))+"'"
+        charRepresentation=chr(numRepresentation)
+        return "'"+charRepresentation+"'"
 
 # Returns an empty string for void (no argument) input
 class VoidGenerator():

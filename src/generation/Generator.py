@@ -36,6 +36,8 @@ class Generator():
     maxSuiteSize=25.0
     # Max test length
     maxLength=10.0
+    # Max array size when generating input
+    maxArraySize=25
 
     # Central process of instrumentation
     def generate(self,outFile):
@@ -120,8 +122,22 @@ class Generator():
         # Generate inputs
         for inputChoice in inputs:
             words=inputChoice.strip().split()
+            inputName=words[len(words)-1]
             typeToGenerate=" ".join(words[:len(words)-1])
-            call=call+inputGenerator.generate(typeToGenerate)+", "
+            
+            # Is is an array?
+            if "[" in inputName:
+                size=random.randint(1,self.maxArraySize)
+                inputNameNoArray=inputName[:len(inputName)-2]
+                createdVarName="inputFor"+functionName+inputNameNoArray
+                createdVar="    "+typeToGenerate+" "+createdVarName+"["+str(size)+"] = {"
+                for entry in range(0,size):
+                    createdVar=createdVar+inputGenerator.generate(typeToGenerate)+", "
+                createdVar=createdVar[:len(createdVar)-2]+"};\n"
+                call=createdVar+call+createdVarName+", "
+            else:
+                call=call+inputGenerator.generate(typeToGenerate)+", "
+
         call=call[:len(call)-2]+");\n"
         test=test+call
         test=test+"}\n\n"
@@ -242,10 +258,24 @@ class Generator():
 
                                     call=call+functionName+"("
                                     # Generate inputs
+
                                     for inputChoice in inputs: 
                                         words=inputChoice.strip().split()
+                                        inputName=words[len(words)-1]
                                         typeToGenerate=" ".join(words[:len(words)-1])
-                                        call=call+inputGenerator.generate(typeToGenerate)+", "
+
+                                        # Is is an array?
+                                        if "[" in inputName:
+                                            size=random.randint(1,self.maxArraySize)
+                                            inputNameNoArray=inputName[:len(inputName)-2]
+                                            createdVarName="inputFor"+functionName+inputNameNoArray+str(length)
+                                            createdVar="    "+typeToGenerate+" "+createdVarName+"["+str(size)+"] = {"
+                                            for entry in range(0,size):
+                                                createdVar=createdVar+inputGenerator.generate(typeToGenerate)+", "
+                                            createdVar=createdVar[:len(createdVar)-2]+"};\n"
+                                            call=createdVar+call+createdVarName+", "
+                                        else:
+                                            call=call+inputGenerator.generate(typeToGenerate)+", "
 
                                     call=call[:len(call)-2]+");\n"
                                     test=test+call
