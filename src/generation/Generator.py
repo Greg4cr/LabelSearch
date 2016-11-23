@@ -14,6 +14,7 @@
 
 #TODO
 # Allow use of assigned variabled defined in tests as input to other tests.
+# Allow use of globals as input to other tests
 # Wider variety of supported input
 
 import getopt
@@ -36,9 +37,9 @@ class Generator():
     # Dependency map for state information
     __dependencyMap=[]
     # Max suite size
-    maxSuiteSize=25
+    maxSuiteSize=25.0
     # Max test length
-    maxLength=10
+    maxLength=10.0
 
     # Central process of instrumentation
     def generate(self,outFile):
@@ -67,7 +68,7 @@ class Generator():
 
         while done == 0:
             # Use a degrading temperature to control the probability of adding an additional test
-            temperature=float((self.maxSuiteSize-len(suite)))/float(self.maxSuiteSize)
+            temperature=(self.maxSuiteSize-float(len(suite)))/self.maxSuiteSize
             if random.random() < temperature: 
                 chance=random.random()
                 numStateful=len(self.getDependencyMap()[0])
@@ -130,6 +131,9 @@ class Generator():
     def buildStatefulTest(self,inputGenerator,testID):
         # Test length
         length=0
+        # Variables created in the test, available for use as input to other functions
+        avail=[]
+        inputGenerator.available=avail
 
         # Get the list of clear global variables
         clearVars=self.buildClearList()
@@ -139,11 +143,12 @@ class Generator():
         # Set the length temperature
         ldone=0
         while ldone == 0:
-            ltemperature=float((self.maxLength-length))/float(self.maxLength)
+            ltemperature=(self.maxLength-float(length)) / self.maxLength
 
             # Continue adding steps as long as random < ltemperature
             if random.random() < ltemperature: 
                 # Can either make an assignment or call a function
+                inputGenerator.available=avail
                 actionTaken=0
                 makeAssignment=0
                 while actionTaken==0:
@@ -232,6 +237,7 @@ class Generator():
                                     # If return is not void, assign it to a variable
                                     if returnType != "void":
                                         call=call+returnType+" call"+str(length)+" = "
+                                        avail.append(["call"+str(length),returnType])
 
                                     call=call+functionName+"("
                                     # Generate inputs
@@ -244,10 +250,11 @@ class Generator():
                             # If no functions can be used, we will make an assignment.
                             makeAssignment=1
                     length+=1
-                else:
-                    ldone=1
-            test=test+"}\n\n"
-            return test
+            else:
+                ldone=1
+        test=test+"}\n\n"
+        inputGenerator.available=[]
+        return test
 
 
     # Build suite code
@@ -434,8 +441,8 @@ def main(argv):
     generator = Generator()
     program = ""
     outFile = ""
-    maxSuiteSize = 25
-    maxLength = 10
+    maxSuiteSize = 25.0
+    maxLength = 10.0
 
     try:
         opts, args = getopt.getopt(argv,"hp:o:l:m:")
@@ -455,9 +462,9 @@ def main(argv):
         elif opt == "-o":
             outFile = arg
         elif opt == "-l":
-            maxLength = int(arg)
+            maxLength = float(arg)
         elif opt == "-m":
-            maxSuiteSize = int(arg)
+            maxSuiteSize = float(arg)
 
     if outFile == "":
         outFile = program[:program.index(".c")]+"_suite.c"
