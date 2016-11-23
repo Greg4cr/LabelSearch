@@ -106,25 +106,30 @@ class Generator():
         # Find function
         for function in self.getFunctions():
             if function[0] == functionName:
-                returnType=function[1][0]
+                returnType=" ".join(function[1])
                 inputs=function[2]
                 break
 
-            test="void test"+testID+"(){\n"
-            call="    "
-            # If return is not void, assign it to a variable
-            if returnType != "void":
-                call=call+returnType+" call"+str(length)+" = "
+        test="void test"+testID+"(){\n"
+        call="    "
 
-            call=call+functionName+"("
-            # Generate inputs
-            for inputChoice in inputs: 
-                call=call+inputGenerator.generate(inputChoice.strip().split()[0])+", "
-            call=call[:len(call)-2]+");\n"
-            test=test+call
-            test=test+"}\n\n"
+        # If return is not void, assign it to a variable
+        if returnType != "void":
+            call=call+returnType+" call = "
+
+        call=call+functionName+"("
+
+
+        # Generate inputs
+        for inputChoice in inputs:
+            words=inputChoice.strip().split()
+            typeToGenerate=" ".join(words[:len(words)-1])
+            call=call+inputGenerator.generate(typeToGenerate)+", "
+        call=call[:len(call)-2]+");\n"
+        test=test+call
+        test=test+"}\n\n"
             
-            return test
+        return test
  
     # Build a state-impacting test case
     def buildStatefulTest(self,inputGenerator,testID):
@@ -159,9 +164,9 @@ class Generator():
                         var=self.getStateVariables()[index]
                                     
                         if var[1]=="var":
-                            call=call+var[0]+" = "+inputGenerator.generate(var[2][0])+";\n"
+                            call=call+var[0]+" = "+inputGenerator.generate(" ".join(var[2]))+";\n"
                         elif var[1]=="pointer":
-                            call=call+var[0]+" = "+inputGenerator.generate("*"+var[2][0])+";\n"
+                            call=call+var[0]+" = "+inputGenerator.generate("*"+" ".join(var[2]))+";\n"
                         elif "array" in var[1]:
                             # If the array is uninit, assign values to whole array
                             # Otherwise, either choose an index or assign values
@@ -174,11 +179,11 @@ class Generator():
                             
                             if initWhole > 0.5:
                                 for index in range(0,int(var[1].split(",")[1])):
-                                    call=call+var[0]+"["+str(index)+"] = "+inputGenerator.generate(var[2][0])+";\n    "
+                                    call=call+var[0]+"["+str(index)+"] = "+inputGenerator.generate(" ".join(var[2]))+";\n    "
                                 call=call[:len(call)-4]
                             else: 
                                 aindex=random.randint(0,int(var[1].split(",")[1])-1)
-                                call=call+var[0]+"["+str(aindex)+"] = "+inputGenerator.generate(var[2][0])+";\n"
+                                call=call+var[0]+"["+str(aindex)+"] = "+inputGenerator.generate(" ".join(var[2]))+";\n"
 
                         test=test+call
                         actionTaken=1
@@ -228,7 +233,7 @@ class Generator():
                                     # Find function
                                     for function in self.getFunctions():
                                         if function[0] == functionName:
-                                            returnType=function[1][0]
+                                            returnType=" ".join(function[1])
                                             inputs=function[2]
                                             break
 
@@ -241,8 +246,11 @@ class Generator():
                                     call=call+functionName+"("
                                     # Generate inputs
                                     for inputChoice in inputs: 
-                                        call=call+inputGenerator.generate(inputChoice)+", "
-                                        call=call[:len(call)-2]+");\n"
+                                        words=inputChoice.strip().split()
+                                        typeToGenerate=" ".join(words[:len(words)-1])
+                                        call=call+inputGenerator.generate(typeToGenerate)+", "
+
+                                    call=call[:len(call)-2]+");\n"
                                     test=test+call
                                     actionTaken=1
                                     break
@@ -403,9 +411,9 @@ class Generator():
         for var in self.getStateVariables():
             if var[3] =='':
                 # No initialized value, so not safe
-                clearList.append([var[0],"uninit",var[2][0]])
+                clearList.append([var[0],"uninit"," ".join(var[2])])
             else:
-                clearList.append([var[0],"init",var[2][0]])
+                clearList.append([var[0],"init"," ".join(var[2])])
  
         return clearList
 

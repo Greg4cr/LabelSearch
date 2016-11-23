@@ -50,7 +50,7 @@ class GeneratorFactory():
                     return self.ig.generate()
             else:
                 return self.ig.generate()
-        elif typeToGenerate == "void":
+        elif typeToGenerate == "void" or typeToGenerate == "":
             return self.vg.generate()
         else:
             print("We do not current support input generator for type: "+typeToGenerate)
