@@ -12,9 +12,6 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#TODO
-# Wider variety of supported input
-
 import getopt
 import sys
 import os
@@ -268,7 +265,14 @@ class Generator():
         combined=copy.deepcopy(available)
         for var in clear:
             if var[1] == "init":
-                combined.append([var[0],var[2]])
+                if "[" in var[2]:
+                    returnType=var[2].split("[")[0]
+                    length=var[2].split("[")[1]
+                    length=int(length[:len(length)-1])
+                    for index in range(0,length):
+                        combined.append([var[0]+"["+str(index)+"]",returnType])
+                else:
+                    combined.append([var[0],var[2]])
 
         return combined
 
@@ -409,11 +413,15 @@ class Generator():
     def buildClearList(self):
         clearList=[]
         for var in self.getStateVariables():
+            returnType=" ".join(var[2]) 
+            if "array" in var[1]:
+                returnType=returnType+"["+var[1].split(",")[1]+"]"
+
             if var[3] =='':
                 # No initialized value, so not safe
-                clearList.append([var[0],"uninit"," ".join(var[2])])
+                clearList.append([var[0],"uninit",returnType])
             else:
-                clearList.append([var[0],"init"," ".join(var[2])])
+                clearList.append([var[0],"init",returnType])
  
         return clearList
 
