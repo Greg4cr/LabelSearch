@@ -362,7 +362,7 @@ class Generator():
     # Read in C file and get list of functions and state variables from it.
     def initializeProgramData(self):
         # Parse the program and generate the AST
-        ast = parse_file(self.getProgram(), use_cpp=True)
+        ast = parse_file(self.getProgram(), use_cpp=True, cpp_path = "gcc", cpp_args=['-E',r'-Iutils/fake_libc_include'])
         #ast.show()      
  
         # Use the ProgramDataVisitor to build the function and global variable lists
