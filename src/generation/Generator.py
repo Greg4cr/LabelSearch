@@ -99,6 +99,7 @@ class Generator():
     # Build a non-state-affecting test case
     def buildStatelessTest(self,inputGenerator,testID):
         # Choose a function that does not affect global state
+        unsupportedType = 0
         index=random.randint(0,len(self.getDependencyMap()[1])-1)
         functionName=self.getDependencyMap()[1][index][0]
                     
@@ -120,6 +121,7 @@ class Generator():
 
 
         # Generate inputs
+        createdVars = ""
         for inputChoice in inputs:
             words=inputChoice.strip().split()
             inputName=words[len(words)-1]
@@ -132,13 +134,28 @@ class Generator():
                 createdVarName="inputFor"+functionName+inputNameNoArray
                 createdVar="    "+typeToGenerate+" "+createdVarName+"["+str(size)+"] = {"
                 for entry in range(0,size):
-                    createdVar=createdVar+inputGenerator.generate(typeToGenerate)+", "
-                createdVar=createdVar[:len(createdVar)-2]+"};\n"
-                call=createdVar+call+createdVarName+", "
+                    value=inputGenerator.generate(typeToGenerate)
+                    if "//" in value:
+                        value=value[2:]
+                        createdVar = "// "+createdVar
+                        unsupportedType = 1
+                    createdVar=createdVar+value+", "
+                createdVar = createdVar[:len(createdVar)-2] + "};\n"
+                createdVars = createdVars + createdVar
+                call = call + createdVarName+", "
             else:
-                call=call+inputGenerator.generate(typeToGenerate)+", "
+                value = inputGenerator.generate(typeToGenerate)
+                if "//" in value:
+                    value=value[2:]
+                    unsupportedType = 1
 
-        call=call[:len(call)-2]+");\n"
+                call=call+value+", "
+
+        call = call[:len(call)-2]+");\n"
+        if unsupportedType == 1:
+            call ="// "+call
+        call = createdVars + call
+
         test=test+call
         test=test+"}\n\n"
             
@@ -160,26 +177,42 @@ class Generator():
         # Set the length temperature
         ldone=0
         while ldone == 0:
-            ltemperature=(self.maxLength-float(length)) / self.maxLength
+            ltemperature = (self.maxLength-float(length)) / self.maxLength
 
             # Continue adding steps as long as random < ltemperature
             if random.random() < ltemperature: 
                 # Can either make an assignment or call a function
-                inputGenerator.available=self.addClearToAvailable(avail,clearVars)
-                actionTaken=0
-                makeAssignment=0
+                inputGenerator.available = self.addClearToAvailable(avail,clearVars)
+                actionTaken = 0
+                makeAssignment = 0
+                unsupportedType = 0
                 while actionTaken==0:
                     if random.random() < 0.5 or makeAssignment == 1:
                         # Make an assignment
                         call="    "
                         # Choose a state variable
-                        index=random.randint(0,len(self.getStateVariables())-1)
-                        var=self.getStateVariables()[index]
-                                    
+                        index = random.randint(0,len(self.getStateVariables())-1)
+                        var = self.getStateVariables()[index]
                         if var[1]=="var":
-                            call=call+var[0]+" = "+inputGenerator.generate(" ".join(var[2]))+";\n"
+                            value = inputGenerator.generate(" ".join(var[2]))
+                            if "//" in value:
+                                value = value[2:]
+                                unsupportedType=1
+
+                            call = call+var[0]+" = "+value+";\n"
+                            if unsupportedType == 1:
+                                call = "// " + call
+
                         elif var[1]=="pointer":
-                            call=call+var[0]+" = "+inputGenerator.generate("*"+" ".join(var[2]))+";\n"
+                            value = inputGenerator.generate("*"+" ".join(var[2]))
+                            if "//" in value:
+                                value = value[2:]
+                                unsupportedType=1
+
+                            call=call+var[0]+" = "+value+";\n"
+                            if unsupportedType == 1:
+                                call = "// " + call
+
                         elif "array" in var[1]:
                             # If the array is uninit, assign values to whole array
                             # Otherwise, either choose an index or assign values
@@ -192,20 +225,38 @@ class Generator():
                             
                             if initWhole > 0.5:
                                 for index in range(0,int(var[1].split(",")[1])):
-                                    call=call+var[0]+"["+str(index)+"] = "+inputGenerator.generate(" ".join(var[2]))+";\n    "
-                                call=call[:len(call)-4]
+                                    value = inputGenerator.generate(" ".join(var[2]))
+                                    if "//" in value:
+                                        value = value[2:]
+                                        unsupportedType = 1
+                                    
+                                    if unsupportedType == 1:
+                                        call = call + "//" + var[0] + "[" + str(index) + "] = " + value + ";\n    "
+                                    else:
+                                        call = call + var[0] + "[" + str(index) + "] = " + value + ";\n    "
+
+                                call = call[:len(call)-4]
                             else: 
-                                aindex=random.randint(0,int(var[1].split(",")[1])-1)
-                                call=call+var[0]+"["+str(aindex)+"] = "+inputGenerator.generate(" ".join(var[2]))+";\n"
+                                aindex = random.randint(0,int(var[1].split(",")[1])-1)
+                                value = inputGenerator.generate(" ".join(var[2]))
+                                if "//" in value:
+                                    value = value[2:]
+                                    unsupportedType = 1
+
+                                call = call + var[0] + "[" + str(aindex) + "] = " + value + ";\n"
+                        
+                                if unsupportedType == 1:
+                                    call = "// " + call
 
                         test=test+call
                         actionTaken=1
 
                         # Mark as init in clear var list
-                        for varIndex in range(0,len(clearVars)):
-                            if clearVars[varIndex][0]==var[0]:
-                                clearVars[varIndex][1]="init";
-                                break
+                        if unsupportedType == 0:
+                            for varIndex in range(0,len(clearVars)):
+                                if clearVars[varIndex][0]==var[0]:
+                                    clearVars[varIndex][1]="init";
+                                    break
                     else:
                         # Choose a function that can be used with the current clear list
                         options=[]
@@ -236,13 +287,7 @@ class Generator():
 
                                 if allInit==1:
                                     # This is a function we can use
-                                    # Update clear list
-                                    for provides in self.getDependencyMap()[0][index][2]:
-                                        for var in range(0,len(clearVars)):
-                                            if clearVars[var][0]==provides:
-                                                clearVars[var][1]="init";
-                                                break
-
+                                    
                                     # Find function
                                     for function in self.getFunctions():
                                         if function[0] == functionName:
@@ -259,6 +304,8 @@ class Generator():
                                     call=call+functionName+"("
                                     # Generate inputs
 
+                                    createdVars=""
+
                                     for inputChoice in inputs: 
                                         words=inputChoice.strip().split()
                                         inputName=words[len(words)-1]
@@ -271,14 +318,40 @@ class Generator():
                                             createdVarName="inputFor"+functionName+inputNameNoArray+str(length)
                                             createdVar="    "+typeToGenerate+" "+createdVarName+"["+str(size)+"] = {"
                                             for entry in range(0,size):
-                                                createdVar=createdVar+inputGenerator.generate(typeToGenerate)+", "
-                                            createdVar=createdVar[:len(createdVar)-2]+"};\n"
-                                            call=createdVar+call+createdVarName+", "
-                                        else:
-                                            call=call+inputGenerator.generate(typeToGenerate)+", "
+                                                value = inputGenerator.generate(typeToGenerate)
+                                                if "//" in value:
+                                                    value = value[2:]
+                                                    unsupportedType = 1
+                                                    createdVar = "//" + createdVar
 
-                                    call=call[:len(call)-2]+");\n"
-                                    test=test+call
+                                                createdVar = createdVar + value + ", "
+
+                                            createdVar = createdVar[:len(createdVar)-2]+"};\n"
+                                            createdVars = createdVars + createdVar
+                                            call = call + createdVarName+", "
+                                        else:
+                                            value = inputGenerator.generate(typeToGenerate)
+                                            if "//" in value:
+                                                value = value[2:]
+                                                unsupportedType = 1
+
+                                            call = call + value + ", "
+
+                                    call = call[:len(call)-2]+");\n"
+                                    if unsupportedType == 1:
+                                        call = "//" + call
+
+                                    call = createdVars + call
+                                    test = test + call
+
+                                    # Update clear list
+                                    if unsupportedType == 0:
+                                        for provides in self.getDependencyMap()[0][index][2]:
+                                            for var in range(0,len(clearVars)):
+                                                if clearVars[var][0]==provides:
+                                                    clearVars[var][1]="init";
+                                                    break
+
                                     actionTaken=1
                                     break
                             # If no functions can be used, we will make an assignment.

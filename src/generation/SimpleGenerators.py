@@ -1,6 +1,12 @@
 import random
 import string
 
+# TODO
+# Struct
+# Multidimensional arrays
+# Unions
+# Pointers
+
 # Simple integer generator.
 class IntGenerator():
     minInt = -32767
@@ -227,5 +233,6 @@ class GeneratorFactory():
             return self.vg.generate()
         else:
             print("We do not current support input generation for type: "+typeToGenerate)
-            return typeToGenerate
+            # Signifies to caller that this type is not supported.
+            return "//"+typeToGenerate
 
