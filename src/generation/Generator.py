@@ -6,7 +6,6 @@
 # -o <name of test suite>
 # -l <maximum single test length, default is 10 steps (assignments or calls)>
 # -m <maximum test suite size, default is 25>
-# -s <seed for random number generator>
 
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
