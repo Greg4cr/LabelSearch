@@ -73,6 +73,7 @@ class Generator():
         done=0
         generator = GeneratorFactory()
         generator.typeDefs = self.getTypeDefs()
+        generator.structs = self.getStructs()
 
         while done == 0:
             # Use a degrading temperature to control the probability of adding an additional test
@@ -146,9 +147,16 @@ class Generator():
                 for entry in range(0,size):
                     value=inputGenerator.generate(typeToGenerate)
                     if "//" in value:
-                        value=value[2:]
-                        createdVar = "// "+createdVar
-                        unsupportedType = 1
+                        if "structInput" in value:
+                            toAdd = value.split(":    ")[1]
+                            value = value.split(":    ")[0]
+                            value = value[2:]
+                            createdVars = createdVars + "    " + toAdd 
+                        else:
+                            value=value[2:]
+                            createdVar = "// "+createdVar
+                            unsupportedType = 1
+
                     createdVar=createdVar+value+", "
                 createdVar = createdVar[:len(createdVar)-2] + "};\n"
                 createdVars = createdVars + createdVar
@@ -156,8 +164,14 @@ class Generator():
             else:
                 value = inputGenerator.generate(typeToGenerate)
                 if "//" in value:
-                    value=value[2:]
-                    unsupportedType = 1
+                    if "structInput" in value:
+                        toAdd = value.split(":    ")[1]
+                        value = value.split(":    ")[0]
+                        value = value[2:]
+                        call = "    " + toAdd + call
+                    else:
+                        value=value[2:]
+                        unsupportedType = 1
 
                 call=call+value+", "
 
@@ -206,18 +220,32 @@ class Generator():
                         if var[1]=="var":
                             value = inputGenerator.generate(" ".join(var[2]))
                             if "//" in value:
-                                value = value[2:]
-                                unsupportedType=1
+                                if "structInput" in value:
+                                    toAdd = value.split(":    ")[1]
+                                    value = value.split(":    ")[0]
+                                    value = value[2:]
+                                    call = "    " + toAdd + call
+                                else:
+                                    value = value[2:]
+                                    unsupportedType=1
 
                             call = call+var[0]+" = "+value+";\n"
                             if unsupportedType == 1:
                                 call = "// " + call
 
                         elif var[1]=="pointer":
-                            value = inputGenerator.generate("*"+" ".join(var[2]))
+                            # Right now, this is the same as a normal variable. 
+                            # In the future, will expand
+                            value = inputGenerator.generate(" ".join(var[2]))
                             if "//" in value:
-                                value = value[2:]
-                                unsupportedType=1
+                                if "structInput" in value:
+                                    toAdd = value.split(":    ")[1]
+                                    value = value.split(":    ")[0]
+                                    value = value[2:]
+                                    call = "    " + toAdd + call
+                                else:
+                                    value = value[2:]
+                                    unsupportedType=1
 
                             call=call+var[0]+" = "+value+";\n"
                             if unsupportedType == 1:
@@ -237,8 +265,14 @@ class Generator():
                                 for index in range(0,int(var[1].split(",")[1])):
                                     value = inputGenerator.generate(" ".join(var[2]))
                                     if "//" in value:
-                                        value = value[2:]
-                                        unsupportedType = 1
+                                        if "structInput" in value:
+                                            toAdd = value.split(":    ")[1]
+                                            value = value.split(":    ")[0]
+                                            value = value[2:]
+                                            call = "    " + toAdd + call
+                                        else:
+                                            value = value[2:]
+                                            unsupportedType = 1
                                     
                                     if unsupportedType == 1:
                                         call = call + "//" + var[0] + "[" + str(index) + "] = " + value + ";\n    "
@@ -250,8 +284,14 @@ class Generator():
                                 aindex = random.randint(0,int(var[1].split(",")[1])-1)
                                 value = inputGenerator.generate(" ".join(var[2]))
                                 if "//" in value:
-                                    value = value[2:]
-                                    unsupportedType = 1
+                                    if "structInput" in value:
+                                        toAdd = value.split(":    ")[1]
+                                        value = value.split(":    ")[0]
+                                        value = value[2:]
+                                        call = "    " + toAdd + call
+                                    else:
+                                        value = value[2:]
+                                        unsupportedType = 1
 
                                 call = call + var[0] + "[" + str(aindex) + "] = " + value + ";\n"
                         
@@ -330,9 +370,15 @@ class Generator():
                                             for entry in range(0,size):
                                                 value = inputGenerator.generate(typeToGenerate)
                                                 if "//" in value:
-                                                    value = value[2:]
-                                                    unsupportedType = 1
-                                                    createdVar = "//" + createdVar
+                                                    if "structInput" in value:
+                                                        toAdd = value.split(":    ")[1]
+                                                        value = value.split(":    ")[0]
+                                                        value = value[2:]
+                                                        createdVars = createdVars + "    " + toAdd 
+                                                    else:
+                                                        value = value[2:]
+                                                        unsupportedType = 1
+                                                        createdVar = "//" + createdVar
 
                                                 createdVar = createdVar + value + ", "
 
@@ -342,8 +388,14 @@ class Generator():
                                         else:
                                             value = inputGenerator.generate(typeToGenerate)
                                             if "//" in value:
-                                                value = value[2:]
-                                                unsupportedType = 1
+                                                if "structInput" in value:
+                                                    toAdd = value.split(":    ")[1]
+                                                    value = value.split(":    ")[0]
+                                                    value = value[2:]
+                                                    call = "    " + toAdd + call
+                                                else:
+                                                    value = value[2:]
+                                                    unsupportedType = 1
 
                                             call = call + value + ", "
 

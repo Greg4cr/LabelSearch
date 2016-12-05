@@ -175,6 +175,15 @@ class GeneratorFactory():
             return self.bg.generate()
         elif typeToGenerate == "void" or typeToGenerate == "":
             return self.vg.generate()
+        elif "struct " in typeToGenerate:
+            structName = typeToGenerate[7:]
+            # Look for entry in definitions
+            for entry in self.structs:
+                if entry[0] == structName:
+                    self.sg.structDef = entry
+                    return self.sg.generate(self)
+            print("We do not have a valid definition for struct: "+structName)
+            return "//"+typeToGenerate
         else:
             # Check typedefs list
             for entry in self.typeDefs:
