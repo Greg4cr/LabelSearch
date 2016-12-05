@@ -17,8 +17,9 @@ Progress
 * Individual Suite Generation - In Progress
   * Test Suite Structure - Complete
   * Test Specification Generation - Complete
-  * Concrete Input Generation - To Do
-  * Removal of Non-Compiling Tests - To Do
+  * Concrete Input Generation - In Progress
+    * All basic types now supported. 
+  * Suite Verification - Complete
   * Suite Minimization - To Do
 * Metaheuristic Search - To Do
 

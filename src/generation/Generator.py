@@ -20,6 +20,7 @@ from subprocess import call
 from pycparser import parse_file, c_parser, c_ast
 from DependencyGraph import *
 from SimpleGenerators import *
+from Verifier import Verifier
 
 class Generator(): 
 
@@ -37,6 +38,8 @@ class Generator():
     maxLength=10.0
     # Max array size when generating input
     maxArraySize=25
+    # Object that verifies that suites compile and do not cause segmentation fault
+    verifier = Verifier()
 
     # Central process of instrumentation
     def generate(self,outFile):
@@ -56,6 +59,9 @@ class Generator():
  
         # Print test suite to file
         self.writeOutFile(code,outFile)
+
+        # Perform suite verification
+        self.verifier.verify(outFile, outFile)
 
     # Build test suite
     def buildSuite(self):
