@@ -101,6 +101,7 @@ class GeneratorFactory():
     bg = BoolGenerator()
     vg = VoidGenerator()
     ag = AvailableGenerator()
+    typeDefs = []
 
     def generate(self,typeToGenerate):
         # At a set probability, use an available variable instead of generating a new value.
@@ -112,8 +113,7 @@ class GeneratorFactory():
         if typeToGenerate == "int" or typeToGenerate == "signed int": 
             return self.ig.generate()
         elif typeToGenerate == "short" or typeToGenerate == "short int" or \
-            typeToGenerate == "signed short" or typeToGenerate == "signed short int" or \
-            typeToGenerate == "int16_t" or typeToGenerate == "int_fast16_t" or typeToGenerate == "int_least16_t":
+            typeToGenerate == "signed short" or typeToGenerate == "signed short int":
             self.ig.minInt = self.shortIntMin
             self.ig.maxInt = self.shortIntMax
 
@@ -123,8 +123,7 @@ class GeneratorFactory():
             self.ig.maxInt = self.defaultIntMax
 
             return value
-        elif typeToGenerate == "unsigned short" or typeToGenerate == "unsigned short int" or \
-            typeToGenerate == "uint16_t" or typeToGenerate == "uint_fast16_t" or typeToGenerate == "uint_least16_t": 
+        elif typeToGenerate == "unsigned short" or typeToGenerate == "unsigned short int":
             self.ig.minInt = self.unsignedIntMin
             self.ig.maxInt = self.unsignedShortMax
 
@@ -135,8 +134,7 @@ class GeneratorFactory():
 
             return value
         elif typeToGenerate == "long" or typeToGenerate == "long int" or \
-            typeToGenerate == "signed long" or typeToGenerate == "signed long int" or \
-            typeToGenerate == "int32_t" or typeToGenerate == "int_fast32_t" or typeToGenerate == "int_least32_t":
+            typeToGenerate == "signed long" or typeToGenerate == "signed long int":
             self.ig.minInt = self.longIntMin
             self.ig.maxInt = self.longIntMax
 
@@ -146,8 +144,7 @@ class GeneratorFactory():
             self.ig.maxInt = self.defaultIntMax
 
             return value
-        elif typeToGenerate == "unsigned long" or typeToGenerate == "unsigned long int" or \
-            typeToGenerate == "uint32_t" or typeToGenerate == "uint_fast32_t" or typeToGenerate == "uint_least32_t": 
+        elif typeToGenerate == "unsigned long" or typeToGenerate == "unsigned long int":
             self.ig.minInt = self.unsignedIntMin
             self.ig.maxInt = self.unsignedLongMax
 
@@ -158,9 +155,7 @@ class GeneratorFactory():
 
             return value
         elif typeToGenerate == "long long" or typeToGenerate == "long long int" or \
-            typeToGenerate == "signed long long" or typeToGenerate == "signed long long int" or \
-            typeToGenerate == "int64_t" or typeToGenerate == "int_fast64_t" or \
-            typeToGenerate == "int_least64_t" or typeToGenerate == "intmax_t":
+            typeToGenerate == "signed long long" or typeToGenerate == "signed long long int":
             self.ig.minInt = self.longLongIntMin
             self.ig.maxInt = self.longLongIntMax
 
@@ -170,9 +165,7 @@ class GeneratorFactory():
             self.ig.maxInt = self.defaultIntMax
 
             return value
-        elif typeToGenerate == "unsigned long long" or typeToGenerate == "unsigned long long int" or \
-            typeToGenerate == "uint64_t" or typeToGenerate == "uint_fast64_t" or \
-            typeToGenerate == "uint_least64_t" or typeToGenerate == "uintmax_t": 
+        elif typeToGenerate == "unsigned long long" or typeToGenerate == "unsigned long long int":
             self.ig.minInt = self.unsignedIntMin
             self.ig.maxInt = self.unsignedLongLongMax
 
@@ -182,8 +175,7 @@ class GeneratorFactory():
             self.ig.maxInt = self.defaultIntMax
 
             return value
-        elif typeToGenerate == "char" or typeToGenerate == "unsigned char" or \
-            typeToGenerate == "uint8_t" or typeToGenerate == "uint_fast8_t" or typeToGenerate == "uint_least8_t":
+        elif typeToGenerate == "char" or typeToGenerate == "unsigned char":
             self.ig.minInt = self.defaultCharMin
             self.ig.maxInt = self.defaultCharMax
 
@@ -193,8 +185,7 @@ class GeneratorFactory():
             self.ig.maxInt = self.defaultIntMax
 
             return value
-        elif typeToGenerate == "signed char" or \
-            typeToGenerate == "int8_t" or typeToGenerate == "int_fast8_t" or typeToGenerate == "int_least8_t":
+        elif typeToGenerate == "signed char":
             self.ig.minInt = self.signedCharMin
             self.ig.maxInt = self.signedCharMax
   
@@ -232,6 +223,11 @@ class GeneratorFactory():
         elif typeToGenerate == "void" or typeToGenerate == "":
             return self.vg.generate()
         else:
+            # Check typedefs list
+            for entry in self.typeDefs:
+                if typeToGenerate == entry[0]:
+                    return self.generate(" ".join(entry[1]))
+               
             print("We do not current support input generation for type: "+typeToGenerate)
             # Signifies to caller that this type is not supported.
             return "//"+typeToGenerate

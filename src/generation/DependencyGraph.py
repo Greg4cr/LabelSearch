@@ -90,11 +90,11 @@ class DependencyMapVisitor(c_ast.NodeVisitor):
 class ProgramDataVisitor(c_ast.NodeVisitor):
 
     # Function List
-    functions=[]
-
+    functions = []
     # Global variable list
-    stateVariables=[]
-
+    stateVariables = []
+    # Type definition list
+    typeDefs = []
     # Generator to get C code from a node
     generator = c_generator.CGenerator()
 
@@ -144,3 +144,8 @@ class ProgramDataVisitor(c_ast.NodeVisitor):
                 # Initial value
                 var.append(self.generator.visit(node.init))
                 self.stateVariables.append(var)
+
+    # TypeDecl nodes indicate type definitions
+    def visit_TypeDecl(self, node):
+        # Get the name and type of all typedefs.
+        self.typeDefs.append([node.declname, node.type.names])

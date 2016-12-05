@@ -25,19 +25,21 @@ from Verifier import Verifier
 class Generator(): 
 
     # Program to generate tests for.
-    __program=""
+    __program = ""
     # List of functions in that program.
-    __functions=[]
+    __functions = []
     # List of global (state) variables.
-    __stateVariables=[]
+    __stateVariables = []
+    # List of type definitions.
+    __typeDefs = []
     # Dependency map for state information
-    __dependencyMap=[]
+    __dependencyMap = []
     # Max suite size
-    maxSuiteSize=25.0
+    maxSuiteSize = 25.0
     # Max test length
-    maxLength=10.0
+    maxLength = 10.0
     # Max array size when generating input
-    maxArraySize=25
+    maxArraySize = 25
     # Object that verifies that suites compile and do not cause segmentation fault
     verifier = Verifier()
 
@@ -68,6 +70,7 @@ class Generator():
         suite=[]
         done=0
         generator = GeneratorFactory()
+        generator.typeDefs = self.getTypeDefs()
 
         while done == 0:
             # Use a degrading temperature to control the probability of adding an additional test
@@ -443,13 +446,15 @@ class Generator():
         ast = parse_file(self.getProgram(), use_cpp=True, cpp_path = "gcc", cpp_args=['-E',r'-Iutils/fake_libc_include'])
         #ast.show()      
  
-        # Use the ProgramDataVisitor to build the function and global variable lists
+        # Use the ProgramDataVisitor to build the function, type def, and global variable lists
         pdVisitor = ProgramDataVisitor()
         pdVisitor.visit(ast)
         self.setFunctions(pdVisitor.functions)
         self.setStateVariables(pdVisitor.stateVariables)
+        self.setTypeDefs(pdVisitor.typeDefs)
         print self.getFunctions()
         print self.getStateVariables()
+        print self.getTypeDefs()
         
         # Use the DependencyMapVisitor to build the dependency map
         dpVisitor = DependencyMapVisitor(self.getFunctions(), self.getStateVariables())
@@ -544,16 +549,19 @@ class Generator():
 
     # Setters for global variables
     def setProgram(self,program):
-        self.__program=program
+        self.__program = program
 
     def setFunctions(self,functions):
-        self.__functions=functions
+        self.__functions = functions
 
     def setStateVariables(self,stateVariables):
-        self.__stateVariables=stateVariables
+        self.__stateVariables = stateVariables
 
     def setDependencyMap(self,dependencyMap):
-        self.__dependencyMap=dependencyMap
+        self.__dependencyMap = dependencyMap
+
+    def setTypeDefs(self, typeDefs):
+        self.__typeDefs = typeDefs
 
     # Getters for global variables
     def getProgram(self):
@@ -567,6 +575,9 @@ class Generator():
 
     def getDependencyMap(self):
         return self.__dependencyMap
+
+    def getTypeDefs(self):
+        return self.__typeDefs
 
 def main(argv):
     generator = Generator()
