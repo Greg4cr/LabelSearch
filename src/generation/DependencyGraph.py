@@ -176,5 +176,39 @@ class ProgramDataVisitor(c_ast.NodeVisitor):
     # TypeDecl nodes indicate type definitions
     def visit_TypeDecl(self, node):
         # Get the name and type of all typedefs.
-        self.typeDefs.append([node.declname, node.type.names])
+        if type(node.type) is c_ast.Struct:
+            if node.type.name != None:
+                self.typeDefs.append([node.declname, ["struct", node.type.name]])
+            else:
+                self.typeDefs.append([node.declname, ["struct", node.declname]])
+
+            # If the structure definition is included, capture it
+            if node.type.decls != None:
+                struct = []
+                if node.type.name != None:
+                    struct.append(node.type.name)
+                else:
+                    struct.append(node.declname)
+                struct.append([])
+                for decl in node.type.decls:
+                    member = []
+                    #print decl.show()
+                    member.append(decl.name)
+                    member.append([])
+                    if type(decl.type) is c_ast.TypeDecl:
+                        # Status
+                        member[1].append("var")
+                        # Type
+                        member[1].append(decl.type.type.names)
+                    elif type(decl.type) is c_ast.ArrayDecl:
+                        member[1].append("array,"+str(decl.type.dim.value))
+                        member[1].append(decl.type.type.type.names)
+                    elif type(decl.type) is c_ast.PtrDecl:
+                        member[1].append("pointer")
+                        member[1].append(decl.type.type.type.names)
+
+                    struct[1].append(member)
+                self.structs.append(struct)
+        else:
+            self.typeDefs.append([node.declname, node.type.names])
 
