@@ -140,8 +140,12 @@ class Generator():
             
             # Is is an array?
             if "[" in inputName:
-                size=random.randint(1,self.maxArraySize)
-                inputNameNoArray=inputName[:len(inputName)-2]
+                size = inputName[inputName.index("[")+1:inputName.index("]")]
+                if size == "":
+                    size = random.randint(1,self.maxArraySize)
+                else:
+                    size = int(size)  
+                inputNameNoArray=inputName[:inputName.index("[")]
                 createdVarName="inputFor"+functionName+inputNameNoArray
                 createdVar="    "+typeToGenerate+" "+createdVarName+"["+str(size)+"] = {"
                 for entry in range(0,size):
@@ -363,8 +367,12 @@ class Generator():
 
                                         # Is is an array?
                                         if "[" in inputName:
-                                            size=random.randint(1,self.maxArraySize)
-                                            inputNameNoArray=inputName[:len(inputName)-2]
+                                            size = inputName[inputName.index("[")+1:inputName.index("]")]
+                                            if size == "":
+                                                size = random.randint(1,self.maxArraySize)
+                                            else:
+                                                size = int(size)  
+                                            inputNameNoArray=inputName[:inputName.index("[")]
                                             createdVarName="inputFor"+functionName+inputNameNoArray+str(length)
                                             createdVar="    "+typeToGenerate+" "+createdVarName+"["+str(size)+"] = {"
                                             for entry in range(0,size):

@@ -18,7 +18,8 @@ Progress
   * Test Suite Structure - Complete
   * Test Specification Generation - Complete
   * Concrete Input Generation - In Progress
-    * All basic types now supported. 
+    * All basic types now supported.
+    * Structs supported. 
   * Suite Verification - Complete
   * Suite Minimization - To Do
 * Metaheuristic Search - To Do

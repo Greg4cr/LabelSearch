@@ -127,7 +127,10 @@ class ProgramDataVisitor(c_ast.NodeVisitor):
                 # Status
                 var.append("var")
                 # Type
-                var.append(node.type.type.names)
+                if type(node.type.type) is c_ast.Struct:
+                    var.append(["struct", node.type.type.name])
+                else:
+                    var.append(node.type.type.names)
                 # Initial Value
                 var.append(self.generator.visit(node.init))
                 self.stateVariables.append(var)
