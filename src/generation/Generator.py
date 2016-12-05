@@ -19,7 +19,7 @@ import copy
 from subprocess import call
 from pycparser import parse_file, c_parser, c_ast
 from DependencyGraph import *
-from SimpleGenerators import *
+from GeneratorFactory import GeneratorFactory
 from Verifier import Verifier
 
 class Generator(): 
@@ -32,6 +32,8 @@ class Generator():
     __stateVariables = []
     # List of type definitions.
     __typeDefs = []
+    # List of struct definitions.
+    __structs = []
     # Dependency map for state information
     __dependencyMap = []
     # Max suite size
@@ -452,9 +454,11 @@ class Generator():
         self.setFunctions(pdVisitor.functions)
         self.setStateVariables(pdVisitor.stateVariables)
         self.setTypeDefs(pdVisitor.typeDefs)
+        self.setStructs(pdVisitor.structs)
         print self.getFunctions()
         print self.getStateVariables()
         print self.getTypeDefs()
+        print self.getStructs()
         
         # Use the DependencyMapVisitor to build the dependency map
         dpVisitor = DependencyMapVisitor(self.getFunctions(), self.getStateVariables())
@@ -563,6 +567,9 @@ class Generator():
     def setTypeDefs(self, typeDefs):
         self.__typeDefs = typeDefs
 
+    def setStructs(self, structs):
+        self.__structs = structs
+
     # Getters for global variables
     def getProgram(self):
         return self.__program
@@ -578,6 +585,9 @@ class Generator():
 
     def getTypeDefs(self):
         return self.__typeDefs
+
+    def getStructs(self):
+        return self.__structs
 
 def main(argv):
     generator = Generator()

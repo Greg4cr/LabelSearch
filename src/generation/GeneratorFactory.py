@@ -9,6 +9,7 @@
 import random
 import string
 from SimpleGenerators import *
+from StructGenerator import StructGenerator
 
 # TODO
 # Struct
@@ -53,6 +54,7 @@ class GeneratorFactory():
     bg = BoolGenerator()
     vg = VoidGenerator()
     ag = AvailableGenerator()
+    sg = StructGenerator()
 
     def generate(self,typeToGenerate):
         # At a set probability, use an available variable instead of generating a new value.
