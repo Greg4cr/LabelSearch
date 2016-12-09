@@ -454,7 +454,7 @@ class Generator():
         code=[]
         # Add includes statements
         code.append("#include <stdio.h>")
-        code.append("#include \""+self.getProgram()+"\"")
+        code.append("#include \""+os.path.basename(self.getProgram())+"\"")
 
         # Declare test array
         code.append("\n// Array indexing test entries.\n// tests[0] indicates number of tests\n// tests[1] corresponds to test1(), etc.")
