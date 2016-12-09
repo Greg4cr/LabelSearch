@@ -21,54 +21,13 @@ class Verifier():
     suite = TestSuite()
 
     # Imports a suite from a file and performs verification
-    def verify(self,fileName,outFile):
+    def verifyImport(self,fileName,outFile):
         # Get suite code in an easy-to-process form
         self.suite.setFileName(fileName)
         self.suite.importSuite()
-      
-        # Compile and attempt to run the suite.
-        (output, error) = self.compileSuite(fileName)
-
-        if outFile != fileName:
-            self.suite.setFileName(outFile)
-
-        # If an executable is produced, compilation succeeded.                    
-        if "Segmentation fault" in error:
-            print error
-            print "Attempting to find source(s) of segmentation faults"
-           
-            # Turn off all tests
-            # This step is repeated twice because of overlapping substrings.
-            testList = self.suite.getTestList()
-            for entry in range(0,len(testList)):
-                if testList[entry] == 1:
-                    testList[entry] = 0
-            self.suite.setTestList(testList)
-
-            # See if code runs with no tests enabled
-            
-            self.suite.writeSuiteFile()
-            (output, error) = self.compileSuite(outFile)
-            if error != "":
-                raise Exception("Issue with test execution code, not test suite.")
-
-            for testNum in range(0,len(self.getTests())):
-                # Turn one one test, try to run suite. 
-                # If it seg-faults, then turn off that test.
-                testList = self.suite.getTestList()
-                testList[testNum] = 1
-                self.suite.setTestList(testList)
-                #print self.getTestList()
-                self.suite.writeSuiteFile()
-                (output, error) = self.compileSuite(outFile)
-                if error != "":
-                    #print error
-                    testList = self.suite.getTestList()
-                    testList[testNum] = 0
-                    self.suite.setTestList(testList)
-        else:
-            # Print test suite to file
-            self.suite.writeSuiteFile()
+     
+        # Perform verification
+        self.verify(outFile) 
 
     # Performs verification on a suite already in-memory
     def verify(self, outFile):
@@ -164,7 +123,7 @@ def main(argv):
     if fileName == "":
         raise Exception('No suite filename specified')
     else:
-        verifier.verify(fileName,outFile)
+        verifier.verifyImport(fileName,outFile)
 
 # Call into main
 if __name__ == '__main__':
