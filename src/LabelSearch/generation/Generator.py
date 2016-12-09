@@ -21,6 +21,7 @@ from pycparser import parse_file, c_parser, c_ast
 from DependencyGraph import *
 from GeneratorFactory import GeneratorFactory
 from Verifier import Verifier
+from ..structures.TestSuite import TestSuite
 
 class Generator(): 
 
@@ -55,17 +56,25 @@ class Generator():
         if self.getFunctions()==[] or self.getStateVariables()==[] or self.getDependencyMap()==[]:
             self.initializeProgramData()
 
+        suite = TestSuite()
         # Generate test cases
-        suite=self.buildSuite()
-        print(suite)
+        suite.setTests(self.buildSuite())
+        testList = []
+        for entry in suite.getTests():
+            testList.append(1)
+        suite.setTestList(testList)
+        print(suite.getTests())
+
         # Build suite code
-        code=self.buildCode(suite,outFile)
- 
+        suite.setSuiteCode(self.buildCode(suite,outFile))
+
         # Print test suite to file
-        self.writeOutFile(code,outFile)
+        suite.setFileName(outFile)
+        suite.writeSuiteFile()
 
         # Perform suite verification
-        self.verifier.verify(outFile, outFile)
+        self.verifier.suite = suite
+        self.verifier.verify(outFile)
 
     # Build test suite
     def buildSuite(self):
@@ -453,15 +462,12 @@ class Generator():
     def buildCode(self,suite,outFile):
         code=[]
         # Add includes statements
-        code.append("#include <stdio.h>")
+        code.append("#include <stdio.h>\n")
         code.append("#include \""+os.path.basename(self.getProgram())+"\"")
 
         # Declare test array
-        code.append("\n// Array indexing test entries.\n// tests[0] indicates number of tests\n// tests[1] corresponds to test1(), etc.")
-	testDecl="int tests["+str(len(suite)+1)+"]={"+str(len(suite))
-        for test in range(0,len(suite)):
-            testDecl+=",1"
-        code.append(testDecl+"};")
+        code.append("\n// Array indexing test entries.\n// tests[0] indicates number of tests\n// tests[1] corresponds to test1(), etc.\n")
+        code.append("//TESTLIST")
 
         # Add code for printing to screen/file and resetting obligation scores.
 
@@ -471,16 +477,13 @@ class Generator():
         code.append(self.buildReset())
 
         code.append("// Test Cases\n")
-
-	# Append test case code
-        for test in range(0,len(suite)):
-            code.append(suite[test])
+        code.append("//TESTS")
 
         # Append test runner and main
         code.append("// Top-level test runner.\nvoid runner(){\n")
-        for test in range(1,len(suite)+1):
-            code.append("    if(tests["+str(test)+"] == 1)")
-            code.append("        test"+str(test)+"();")
+        for test in range(1,len(suite.getTestList())+1):
+            code.append("    if(tests["+str(test)+"] == 1)\n")
+            code.append("        test"+str(test)+"();\n")
 
         code.append("\n    if(screen == 1)\n        printScoresToScreen();\n    if(print == 1)\n        printScoresToFile();\n}\n\nint main(){\n    runner();\n    return(0);\n}\n")
 
@@ -601,15 +604,6 @@ class Generator():
                 clearList.append([var[0],"init",returnType])
  
         return clearList
-
-    # Write instrumented program to a file
-    def writeOutFile(self,code,outFile):
-        where = open(outFile, 'w')
-       
-        for line in code:
-            where.write(line+"\n")
-
-        where.close()
 
     # Setters for global variables
     def setProgram(self,program):

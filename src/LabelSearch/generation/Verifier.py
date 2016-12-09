@@ -20,7 +20,7 @@ class Verifier():
     # Test suite, in processable form
     suite = TestSuite()
 
-    # Central process of instrumentation
+    # Imports a suite from a file and performs verification
     def verify(self,fileName,outFile):
         # Get suite code in an easy-to-process form
         self.suite.setFileName(fileName)
@@ -69,6 +69,53 @@ class Verifier():
         else:
             # Print test suite to file
             self.suite.writeSuiteFile()
+
+    # Performs verification on a suite already in-memory
+    def verify(self, outFile):
+        # Compile and attempt to run the suite.
+        (output, error) = self.compileSuite(self.suite.getFileName())
+
+        if outFile != self.suite.getFileName():
+            self.suite.setFileName(outFile)
+
+        # If an executable is produced, compilation succeeded.                    
+        if "Segmentation fault" in error:
+            print error
+            print "Attempting to find source(s) of segmentation faults"
+           
+            # Turn off all tests
+            # This step is repeated twice because of overlapping substrings.
+            testList = self.suite.getTestList()
+            for entry in range(0,len(testList)):
+                if testList[entry] == 1:
+                    testList[entry] = 0
+            self.suite.setTestList(testList)
+
+            # See if code runs with no tests enabled
+            
+            self.suite.writeSuiteFile()
+            (output, error) = self.compileSuite(outFile)
+            if error != "":
+                raise Exception("Issue with test execution code, not test suite.")
+
+            for testNum in range(0,len(self.getTests())):
+                # Turn one one test, try to run suite. 
+                # If it seg-faults, then turn off that test.
+                testList = self.suite.getTestList()
+                testList[testNum] = 1
+                self.suite.setTestList(testList)
+                #print self.getTestList()
+                self.suite.writeSuiteFile()
+                (output, error) = self.compileSuite(outFile)
+                if error != "":
+                    #print error
+                    testList = self.suite.getTestList()
+                    testList[testNum] = 0
+                    self.suite.setTestList(testList)
+        else:
+            # Print test suite to file
+            self.suite.writeSuiteFile()
+
 
     # Compiles and runs suite
     def compileSuite(self, fileName):
