@@ -71,6 +71,12 @@ class Verifier():
                     testList = self.suite.getTestList()
                     testList[testNum] = 0
                     self.suite.setTestList(testList)
+
+            # Try to run it one last time
+            self.suite.writeSuiteFile()
+            (output, error) = self.compileSuite(outFile)
+            if error != "":
+                raise Exception("Unable to verify.")
         else:
             # Print test suite to file
             self.suite.writeSuiteFile()
