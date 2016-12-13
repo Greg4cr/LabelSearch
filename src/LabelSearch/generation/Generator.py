@@ -21,6 +21,7 @@ from pycparser import parse_file, c_parser, c_ast
 from DependencyGraph import *
 from GeneratorFactory import GeneratorFactory
 from Verifier import Verifier
+from Runner import Runner
 from ..structures.TestSuite import TestSuite
 
 class Generator(): 
@@ -45,6 +46,8 @@ class Generator():
     maxArraySize = 25
     # Object that verifies that suites compile and do not cause segmentation fault
     verifier = Verifier()
+    # Object that runs suites and calculates their score
+    runner = Runner()
 
     # Central process of instrumentation
     def generate(self,outFile):
@@ -75,6 +78,10 @@ class Generator():
         # Perform suite verification
         self.verifier.suite = suite
         self.verifier.verify(outFile)
+ 
+        # Run the suite and calculate its score
+        self.runner.suite = suite
+        self.runner.run()
 
     # Build test suite
     def buildSuite(self):

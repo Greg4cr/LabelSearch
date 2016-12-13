@@ -19,7 +19,7 @@ from ..structures.TestSuite import TestSuite
 class Verifier(): 
     # Test suite, in processable form
     suite = TestSuite()
-
+    
     # Imports a suite from a file and performs verification
     def verifyImport(self,fileName,outFile):
         # Get suite code in an easy-to-process form
@@ -57,13 +57,13 @@ class Verifier():
             if error != "":
                 raise Exception("Issue with test execution code, not test suite.")
 
-            for testNum in range(0,len(self.getTests())):
+            for testNum in range(0,len(self.suite.getTests())):
                 # Turn one one test, try to run suite. 
                 # If it seg-faults, then turn off that test.
                 testList = self.suite.getTestList()
                 testList[testNum] = 1
                 self.suite.setTestList(testList)
-                #print self.getTestList()
+                print self.suite.getTestList()
                 self.suite.writeSuiteFile()
                 (output, error) = self.compileSuite(outFile)
                 if error != "":

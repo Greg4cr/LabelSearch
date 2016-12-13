@@ -23,6 +23,8 @@ class TestSuite():
     __score = 1000000000
     # File name
     __fileName = "suite.c"
+    # Normalizing constant used in score calculation
+    __normConst = 1.0
 
     # Read in suite file and populate non-score data members
     def importSuite(self):
@@ -87,6 +89,34 @@ class TestSuite():
 
         where.close()
 
+    # Import obligations from file and calculate the overall score
+    def importObligations(self, fileName):
+        obFile = open(fileName, "r")
+        obligations = []
+        for line in obFile:
+            if "# Obligation" in line:
+                obligations.append(0)
+            else:
+                words = line.strip().split(",")
+                obligations.append(float(words[1]))
+                obligations[0] += 1
+
+        obFile.close()
+        self.setObligations(obligations)
+        self.calculateScore()
+
+    # Calculate the suite score
+    def calculateScore(self):
+        score = 0.0
+        obligations = self.getObligations()
+        for testIndex in range(1,obligations[0]+1):
+            if obligations[testIndex] == 1000000.0:
+                score += 1.0
+            elif obligations[testIndex] > 0:
+                score += (obligations[testIndex] / (obligations[testIndex] + self.getNormalizingConstant()))
+
+        self.setScore(score)
+
     # Getters and setters
     def getTestList(self):
         return self.__testList
@@ -106,6 +136,9 @@ class TestSuite():
     def getScore(self):
         return self.__score
 
+    def getNormalizingConstant(self):
+        return self.__normConst
+
     def setTestList(self, testList):
         self.__testList = testList
 
@@ -123,6 +156,9 @@ class TestSuite():
 
     def setFileName(self, fileName):
         self.__fileName = fileName
+
+    def setNormalizingConstant(self, normConst):
+        self.__normConst = normConst
 
 # Call into main
 if __name__ == '__main__':
