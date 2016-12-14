@@ -66,7 +66,7 @@ class Generator():
         for entry in suite.getTests():
             testList.append(1)
         suite.setTestList(testList)
-        print(suite.getTests())
+        #print(suite.getTests())
 
         # Build suite code
         suite.setSuiteCode(self.buildCode(suite,outFile))
@@ -525,16 +525,16 @@ class Generator():
         self.setStateVariables(pdVisitor.stateVariables)
         self.setTypeDefs(pdVisitor.typeDefs)
         self.setStructs(pdVisitor.structs)
-        print self.getFunctions()
-        print self.getStateVariables()
-        print self.getTypeDefs()
-        print self.getStructs()
+        #print self.getFunctions()
+        #print self.getStateVariables()
+        #print self.getTypeDefs()
+        #print self.getStructs()
         
         # Use the DependencyMapVisitor to build the dependency map
         dpVisitor = DependencyMapVisitor(self.getFunctions(), self.getStateVariables())
         dpVisitor.visit(ast)
         sequenceMap=dpVisitor.dependencyMap
-        print sequenceMap
+        #print sequenceMap
  
         # Dependency map has two lists - stateful functions and stateless functions
         dependencyMap=[[],[]]
@@ -550,7 +550,7 @@ class Generator():
                 dependencyMap[0].append(dependencyEntry)
 
         self.setDependencyMap(dependencyMap)
-        print self.getDependencyMap()
+        #print self.getDependencyMap()
 
     # Process sequence and return a dependency list
     def processSequence(self, clearList, function, sequence, sequenceMap):

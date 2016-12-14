@@ -36,7 +36,7 @@ class Runner():
         # If an executable is produced, compilation succeeded.                    
         if "Segmentation fault" in error:
             # If there is a segmentation fault, perform verification and re-run.
-            print error
+            #print error
             print "Performing Verification"
             
             verifier = Verifier()
@@ -51,22 +51,24 @@ class Runner():
             print self.suite.getObligations()
             print self.suite.getScore()
 
-
     # Compiles and runs suite
     def compileSuite(self):
         fileName = self.suite.getFileName()
         if os.path.isfile(fileName):
             path = os.path.dirname(fileName)
-            call("rm a.out", shell=True)
-            call("gcc " + fileName, shell=True)
+            rmProcess = Popen("rm a.out", stdout = PIPE, stderr = PIPE, shell = True)
+            (rOutput, eError) = rmProcess.communicate()
+            compileProcess = Popen("gcc " + fileName, stdout = PIPE, stderr = PIPE, shell=True)
+            (cOutput, cError) = compileProcess.communicate()
             
             if os.path.isfile("a.out"):
-                process = Popen("./a.out", stdout=PIPE, stderr=PIPE, shell=True)
+                # Does it execute without segmentation faults?
+                process = Popen("./a.out", stdout = PIPE, stderr = PIPE, shell=True)
                 (output, error) = process.communicate()
                 call("rm a.out", shell=True)
                 return (output, error)
             else:
-                raise Exception("Suite failed to compile")
+                raise Exception("Suite failed to compile: " + cError)
         else:
             raise Exception("The suite file does not exist.")
 

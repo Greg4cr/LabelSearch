@@ -55,6 +55,6 @@ class StructGenerator():
         declaration = declaration[:len(declaration) - 2]
         declaration = declaration + "};\n"
         declaration = preDefinitions + declaration
-        print declaration
+        #print declaration
 
         return declaration

@@ -39,7 +39,7 @@ class Verifier():
 
         # If an executable is produced, compilation succeeded.                    
         if "Segmentation fault" in error:
-            print error
+            #print error
             print "Attempting to find source(s) of segmentation faults"
            
             # Turn off all tests
@@ -63,7 +63,7 @@ class Verifier():
                 testList = self.suite.getTestList()
                 testList[testNum] = 1
                 self.suite.setTestList(testList)
-                print self.suite.getTestList()
+                #print self.suite.getTestList()
                 self.suite.writeSuiteFile()
                 (output, error) = self.compileSuite(outFile)
                 if error != "":
@@ -86,17 +86,19 @@ class Verifier():
     def compileSuite(self, fileName):
         if os.path.isfile(fileName):
             path = os.path.dirname(fileName)
-            call("rm a.out", shell=True)
-            call("gcc " + fileName, shell=True)
+            rmProcess = Popen("rm a.out", stdout = PIPE, stderr = PIPE, shell = True)
+            (rOutput, eError) = rmProcess.communicate()
+            compileProcess = Popen("gcc " + fileName, stdout = PIPE, stderr = PIPE, shell=True)
+            (cOutput, cError) = compileProcess.communicate()
             
             if os.path.isfile("a.out"):
                 # Does it execute without segmentation faults?
-                process = Popen("./a.out", stdout=PIPE, stderr=PIPE, shell=True)
+                process = Popen("./a.out", stdout = PIPE, stderr = PIPE, shell=True)
                 (output, error) = process.communicate()
                 call("rm a.out", shell=True)
                 return (output, error)
             else:
-                raise Exception("Suite failed to compile")
+                raise Exception("Suite failed to compile: " + cError)
         else:
             raise Exception("The suite file does not exist.")
 
