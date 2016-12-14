@@ -38,7 +38,15 @@ class StructGenerator():
 
                 declaration = declaration + "." + member[0] + " = " + value + ", "           
             elif "array" in member[1][0]:
-                name = "structPreDef" + str(int(random.random() * 1000000))
+                varNum = str(int(random.random() * 1000000))
+                if varNum in preDefinitions:
+                    done = 0
+                    while done == 0:
+                        varNum = str(int(random.random() * 1000000))
+                        if varNum not in preDefinitions:
+                            done = 1
+
+                name = "structPreDef" + varNum 
                 typeToGenerate = " ".join(member[1][1])
                 size = member[1][0].split(",")[1]
                 preDefinitions = preDefinitions + "    " + typeToGenerate + " " + name + "[" + size + "] = {"
