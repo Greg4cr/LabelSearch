@@ -84,7 +84,7 @@ class RandomSearch():
 
             for index in range(0, self.population):
                 suiteName = suites[index].getFileName()
-                rmProcess = Popen("rm " + suiteName + "*", stdout = PIPE, stderr = PIPE, shell = True)
+                rmProcess = Popen("rm " + suiteName, stdout = PIPE, stderr = PIPE, shell = True)
                 (rOutput, eError) = rmProcess.communicate()
 
             # Calculate time

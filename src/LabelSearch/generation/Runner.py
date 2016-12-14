@@ -47,7 +47,10 @@ class Runner():
             self.run()  
         else:
             # If it ran sucessfully, import the obligation scores and recalculate the suite score.
-            self.suite.importObligations(self.suite.getFileName() + "sv")
+            self.suite.importObligations(os.path.basename(self.suite.getFileName()) + "sv")
+            rmProcess = Popen("rm "+os.path.basename(self.suite.getFileName()) + "sv", stdout = PIPE, stderr = PIPE, shell = True)
+            (rOutput, eError) = rmProcess.communicate()
+
             #print self.suite.getObligations()
             #print self.suite.getScore()
 

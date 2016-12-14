@@ -85,7 +85,7 @@ class TestSuite():
                 for testNum in range(0,len(tests)):
                     where.write("".join(tests[testNum]))
             elif line == "//FILENAME":
-                out = "char* fileName = \"" + self.getFileName() + "sv\";\n"
+                out = "char* fileName = \"" + os.path.basename(self.getFileName()) + "sv\";\n"
                 where.write(out)
             else:
                 where.write(line)
