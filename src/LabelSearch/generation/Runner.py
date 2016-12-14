@@ -48,8 +48,8 @@ class Runner():
         else:
             # If it ran sucessfully, import the obligation scores and recalculate the suite score.
             self.suite.importObligations(self.suite.getFileName() + "sv")
-            print self.suite.getObligations()
-            print self.suite.getScore()
+            #print self.suite.getObligations()
+            #print self.suite.getScore()
 
     # Compiles and runs suite
     def compileSuite(self):

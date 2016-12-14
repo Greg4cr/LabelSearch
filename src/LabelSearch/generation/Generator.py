@@ -83,6 +83,8 @@ class Generator():
         self.runner.suite = suite
         self.runner.run()
 
+        return suite
+
     # Build test suite
     def buildSuite(self):
         suite=[]
@@ -478,7 +480,9 @@ class Generator():
 
         # Add code for printing to screen/file and resetting obligation scores.
 
-        code.append("\n// Flag for printing obligation scores to a CSV file at the end of execution.\nint print = 1;\nchar* fileName = \""+outFile+"sv\";\n\n// Flag for printing obligation scores to the screen at the end of execution.\nint screen = 1;\n\n// Prints obligation scores to the screen\nvoid printScoresToScreen(){\n    printf(\"# Obligation, Score (Unnormalized)\\n\");\n    int obligation;\n    for(obligation=1; obligation<=obligations[0]; obligation++){\n        printf(\"%d, %f\\n\",obligation,obligations[obligation]);\n    }\n}\n\n// Prints obligation scores to a file\nvoid printScoresToFile(){\n    FILE *outFile = fopen(fileName,\"w\");\n    fprintf(outFile, \"# Obligation, Score (Unnormalized)\\n\");\n    int obligation;\n    for(obligation=1; obligation<=obligations[0]; obligation++){\n        fprintf(outFile,\"%d, %f\\n\",obligation,obligations[obligation]);\n    }\n    fclose(outFile);\n}\n\n// Resets obligation scores\nvoid resetObligationScores(){\n    int obligation;\n    for(obligation=1; obligation<=obligations[0]; obligation++){\n        // Set to some high level\n        obligations[obligation] = 1000000.0;\n    }\n}\n")
+        code.append("\n// Flag for printing obligation scores to a CSV file at the end of execution.\nint print = 1;\n")
+        code.append("//FILENAME")
+        code.append("\n// Flag for printing obligation scores to the screen at the end of execution.\nint screen = 1;\n\n// Prints obligation scores to the screen\nvoid printScoresToScreen(){\n    printf(\"# Obligation, Score (Unnormalized)\\n\");\n    int obligation;\n    for(obligation=1; obligation<=obligations[0]; obligation++){\n        printf(\"%d, %f\\n\",obligation,obligations[obligation]);\n    }\n}\n\n// Prints obligation scores to a file\nvoid printScoresToFile(){\n    FILE *outFile = fopen(fileName,\"w\");\n    fprintf(outFile, \"# Obligation, Score (Unnormalized)\\n\");\n    int obligation;\n    for(obligation=1; obligation<=obligations[0]; obligation++){\n        fprintf(outFile,\"%d, %f\\n\",obligation,obligations[obligation]);\n    }\n    fclose(outFile);\n}\n\n// Resets obligation scores\nvoid resetObligationScores(){\n    int obligation;\n    for(obligation=1; obligation<=obligations[0]; obligation++){\n        // Set to some high level\n        obligations[obligation] = 1000000.0;\n    }\n}\n")
 
         # Add state reset
         code.append(self.buildReset())
@@ -679,16 +683,16 @@ def main(argv):
         elif opt == "-m":
             maxSuiteSize = float(arg)
 
-    if outFile == "":
-        outFile = program[:program.index(".c")]+"_suite.c"
-
     if program == '':
         raise Exception('No program specified')
     else:
+        if outFile == "":
+            outFile = program[:program.index(".c")]+"_suite.c"
+
         generator.maxSuiteSize=maxSuiteSize
         generator.maxLength=maxLength
         generator.setProgram(program)
-	generator.generate(outFile)
+	suite = generator.generate(outFile)
 
 # Call into main
 if __name__ == '__main__':

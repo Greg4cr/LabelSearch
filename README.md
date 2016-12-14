@@ -22,7 +22,9 @@ Progress
     * Structs supported. 
   * Suite Verification - Complete
   * Suite Minimization - To Do
-* Metaheuristic Search - To Do
+* Suite Execution and Scoring - Complete
+* Metaheuristic Search - In Progress
+  * Random Search - Complete
 
 Currently, we support basic label coverage. In the future, we plan to extend this to include hyperlabels.
 
