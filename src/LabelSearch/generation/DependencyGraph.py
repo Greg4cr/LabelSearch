@@ -97,6 +97,8 @@ class ProgramDataVisitor(c_ast.NodeVisitor):
     typeDefs = []
     # Struct definition list
     structs = []
+    # Union definition list
+    unions = []
     # Generator to get C code from a node
     generator = c_generator.CGenerator()
 
@@ -127,8 +129,10 @@ class ProgramDataVisitor(c_ast.NodeVisitor):
                 # Status
                 var.append("var")
                 # Type
-                if type(node.type.type) is c_ast.Struct:
+                if type(node.type.type) is c_ast.Struct: 
                     var.append(["struct", node.type.type.name])
+                elif type(node.type.type) is c_ast.Union:
+                    var.append(["union", node.type.type.name])
                 else:
                     var.append(node.type.type.names)
                 # Initial Value
@@ -209,6 +213,39 @@ class ProgramDataVisitor(c_ast.NodeVisitor):
 
                     struct[1].append(member)
                 self.structs.append(struct)
+        if type(node.type) is c_ast.Union:
+            if node.type.name != None:
+                self.typeDefs.append([node.declname, ["union", node.type.name]])
+            else:
+                self.typeDefs.append([node.declname, ["union", node.declname]])
+
+            # If the structure definition is included, capture it
+            if node.type.decls != None:
+                union = []
+                if node.type.name != None:
+                    union.append(node.type.name)
+                else:
+                    union.append(node.declname)
+                union.append([])
+                for decl in node.type.decls:
+                    member = []
+                    #print decl.show()
+                    member.append(decl.name)
+                    member.append([])
+                    if type(decl.type) is c_ast.TypeDecl:
+                        # Status
+                        member[1].append("var")
+                        # Type
+                        member[1].append(decl.type.type.names)
+                    elif type(decl.type) is c_ast.ArrayDecl:
+                        member[1].append("array,"+str(decl.type.dim.value))
+                        member[1].append(decl.type.type.type.names)
+                    elif type(decl.type) is c_ast.PtrDecl:
+                        member[1].append("pointer")
+                        member[1].append(decl.type.type.type.names)
+
+                    union[1].append(member)
+                self.unions.append(union)
         else:
             self.typeDefs.append([node.declname, node.type.names])
 

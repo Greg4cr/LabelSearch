@@ -10,11 +10,10 @@ import random
 import string
 from SimpleGenerators import *
 from StructGenerator import StructGenerator
+from UnionGenerator import UnionGenerator
 
 # TODO
-# Struct
 # Multidimensional arrays
-# Unions
 # Pointers
 
 class GeneratorFactory():
@@ -47,6 +46,7 @@ class GeneratorFactory():
     available = []
     typeDefs = []
     structs = []
+    unions = []
 
     # Generation objects
     ig = IntGenerator()
@@ -55,6 +55,7 @@ class GeneratorFactory():
     vg = VoidGenerator()
     ag = AvailableGenerator()
     sg = StructGenerator()
+    ug = UnionGenerator()
 
     def generate(self,typeToGenerate):
         # At a set probability, use an available variable instead of generating a new value.
@@ -183,6 +184,15 @@ class GeneratorFactory():
                     self.sg.structDef = entry
                     return self.sg.generate(self)
             print("We do not have a valid definition for struct: "+structName)
+            return "//"+typeToGenerate
+        elif "union " in typeToGenerate:
+            unionName = typeToGenerate[6:]
+            # Look for entry in definitions
+            for entry in self.unions:
+                if entry[0] == unionName:
+                    self.ug.unionDef = entry
+                    return self.ug.generate(self)
+            print("We do not have a valid definition for union: "+unionName)
             return "//"+typeToGenerate
         else:
             # Check typedefs list

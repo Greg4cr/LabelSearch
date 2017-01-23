@@ -36,6 +36,8 @@ class Generator():
     __typeDefs = []
     # List of struct definitions.
     __structs = []
+    # List of union definitions.
+    __unions = []
     # Dependency map for state information
     __dependencyMap = []
     # Max suite size
@@ -92,6 +94,7 @@ class Generator():
         generator = GeneratorFactory()
         generator.typeDefs = self.getTypeDefs()
         generator.structs = self.getStructs()
+        generator.unions = self.getUnions()
 
         while done == 0:
             # Use a degrading temperature to control the probability of adding an additional test
@@ -169,7 +172,7 @@ class Generator():
                 for entry in range(0,size):
                     value=inputGenerator.generate(typeToGenerate)
                     if "//" in value:
-                        if "structInput" in value:
+                        if "structInput" in value or "unionInput" in value:
                             toAdd = value.split(":    ")[1]
                             value = value.split(":    ")[0]
                             value = value[2:]
@@ -186,7 +189,7 @@ class Generator():
             else:
                 value = inputGenerator.generate(typeToGenerate)
                 if "//" in value:
-                    if "structInput" in value:
+                    if "structInput" in value or "unionInput" in value:
                         toAdd = value.split(":    ")[1]
                         value = value.split(":    ")[0]
                         value = value[2:]
@@ -242,7 +245,7 @@ class Generator():
                         if var[1]=="var":
                             value = inputGenerator.generate(" ".join(var[2]))
                             if "//" in value:
-                                if "structInput" in value:
+                                if "structInput" in value or "unionInput" in value:
                                     toAdd = value.split(":    ")[1]
                                     value = value.split(":    ")[0]
                                     value = value[2:]
@@ -260,7 +263,7 @@ class Generator():
                             # In the future, will expand
                             value = inputGenerator.generate(" ".join(var[2]))
                             if "//" in value:
-                                if "structInput" in value:
+                                if "structInput" in value or "unionInput" in value:
                                     toAdd = value.split(":    ")[1]
                                     value = value.split(":    ")[0]
                                     value = value[2:]
@@ -287,7 +290,7 @@ class Generator():
                                 for index in range(0,int(var[1].split(",")[1])):
                                     value = inputGenerator.generate(" ".join(var[2]))
                                     if "//" in value:
-                                        if "structInput" in value:
+                                        if "structInput" in value or "unionInput" in value:
                                             toAdd = value.split(":    ")[1]
                                             value = value.split(":    ")[0]
                                             value = value[2:]
@@ -306,7 +309,7 @@ class Generator():
                                 aindex = random.randint(0,int(var[1].split(",")[1])-1)
                                 value = inputGenerator.generate(" ".join(var[2]))
                                 if "//" in value:
-                                    if "structInput" in value:
+                                    if "structInput" in value or "unionInput" in value:
                                         toAdd = value.split(":    ")[1]
                                         value = value.split(":    ")[0]
                                         value = value[2:]
@@ -396,7 +399,7 @@ class Generator():
                                             for entry in range(0,size):
                                                 value = inputGenerator.generate(typeToGenerate)
                                                 if "//" in value:
-                                                    if "structInput" in value:
+                                                    if "structInput" in value or "unionInput" in value:
                                                         toAdd = value.split(":    ")[1]
                                                         value = value.split(":    ")[0]
                                                         value = value[2:]
@@ -414,7 +417,7 @@ class Generator():
                                         else:
                                             value = inputGenerator.generate(typeToGenerate)
                                             if "//" in value:
-                                                if "structInput" in value:
+                                                if "structInput" in value or "unionInput" in value:
                                                     toAdd = value.split(":    ")[1]
                                                     value = value.split(":    ")[0]
                                                     value = value[2:]
@@ -529,16 +532,18 @@ class Generator():
         self.setStateVariables(pdVisitor.stateVariables)
         self.setTypeDefs(pdVisitor.typeDefs)
         self.setStructs(pdVisitor.structs)
-        #print self.getFunctions()
-        #print self.getStateVariables()
-        #print self.getTypeDefs()
-        #print self.getStructs()
+        self.setUnions(pdVisitor.unions)
+        print self.getFunctions()
+        print self.getStateVariables()
+        print self.getTypeDefs()
+        print self.getStructs()
+        print self.getUnions()
         
         # Use the DependencyMapVisitor to build the dependency map
         dpVisitor = DependencyMapVisitor(self.getFunctions(), self.getStateVariables())
         dpVisitor.visit(ast)
         sequenceMap=dpVisitor.dependencyMap
-        #print sequenceMap
+        print sequenceMap
  
         # Dependency map has two lists - stateful functions and stateless functions
         dependencyMap=[[],[]]
@@ -554,7 +559,7 @@ class Generator():
                 dependencyMap[0].append(dependencyEntry)
 
         self.setDependencyMap(dependencyMap)
-        #print self.getDependencyMap()
+        print self.getDependencyMap()
 
     # Process sequence and return a dependency list
     def processSequence(self, clearList, function, sequence, sequenceMap):
@@ -635,6 +640,9 @@ class Generator():
     def setStructs(self, structs):
         self.__structs = structs
 
+    def setUnions(self, unions):
+        self.__unions = unions
+
     # Getters for global variables
     def getProgram(self):
         return self.__program
@@ -653,6 +661,9 @@ class Generator():
 
     def getStructs(self):
         return self.__structs
+
+    def getUnions(self):
+        return self.__unions
 
 def main(argv):
     generator = Generator()
