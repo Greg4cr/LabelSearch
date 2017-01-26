@@ -21,10 +21,12 @@ import getopt
 import sys
 import os
 from PredicateTransformation import *
+from Verifier import Verifier
 
 class Instrumentation(): 
 
     scoreEpsilon = 1.0
+    verifier = Verifier()
 
     # Central process of instrumentation
     def instrument(self,program,labelFile,outFile):
@@ -69,6 +71,10 @@ class Instrumentation():
  
         # Print instrumented code to file
         self.writeOutFile(instrumented,outFile)
+
+        # Verify obligations to ensure that they compile. 
+        # If they do not, comment them out and replace with dummy score.
+        self.verifier.verify(outFile, outFile)
 
     # Gets number of obligations from label file
     def getNumObs(self,labelFile):
