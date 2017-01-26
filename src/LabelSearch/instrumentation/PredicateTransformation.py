@@ -53,35 +53,103 @@ class Lexer(object):
         self.pos = 0
         self.current_char = self.text[self.pos]
 
-    def error(self):
-        raise Exception('Invalid character')
+    def error(self, char):
+        raise Exception("Invalid character: " + char)
 
     def advance(self):
-        """Advance the `pos` pointer and set the `current_char` variable."""
+        # Advance the `pos` pointer and set the `current_char` variable.
         self.pos += 1
         if self.pos > len(self.text) - 1:
             self.current_char = None  # Indicates end of input
         else:
             self.current_char = self.text[self.pos]
 
+        #print self.current_char
+
     def skip_whitespace(self):
         while self.current_char is not None and self.current_char.isspace():
             self.advance()
 
     def atom(self):
-        """Return a multicharacter atom consumed from the input."""
+        # Return a multicharacter atom consumed from the input.
         result = ''
-        while self.current_char is not None and (self.current_char.isalnum() or self.current_char == '_'):
-            result += self.current_char
+        done = 0
+        back = 0
+        possibleCast = 0
+        addToEnd = 0
+        # Hack to handle tokens with a cast (i.e., (void *) x) where the first parentheses is missed.  
+        lParen = 0
+        rParen = 0
+        while done == 0:
+            if self.current_char is None:
+                done = 1
+            elif (self.current_char == "<" or (self.current_char == ">" or (self.current_char == "=" or self.current_char == "!"))): 
+                done = 1
+                self.pos -= 1
+                back = 1
+            else:
+                if self.current_char == "&" or self.current_char == "|":
+                    next_char = self.text[self.pos+1:self.pos+2]
+                    
+                    if (self.current_char == "&" and next_char == "&") or (self.current_char == "|" and next_char == "|"):
+                        done = 1
+                        self.pos -=1
+                        back = 1
+                    else:
+                        result += self.current_char
+                        self.advance()
+                else:
+                    if self.current_char == "(":
+                        lParen += 1
+                    elif self.current_char == ")":
+                        rParen += 1
+                        if rParen == 1 and lParen == 0:
+                            possibleCast = 1
+                    elif self.current_char != " " and possibleCast == 1:
+                        possibleCast = 2
+                         
+
+                    result += self.current_char
+                    self.advance()
+
+        while result[len(result)-1] == " ":
+            result = result[:len(result)-1]
+            self.pos -=1
+            back = 1
+       
+        if possibleCast == 2:
+            result = "(" + result
+            self.text = self.text[:self.pos+1] + ")" + self.text[self.pos+1:]
+            if back == 0:
+                self.pos -=1
+                back = 1
+            lParen += 1
+ 
+        if rParen > lParen: 
+            diff = rParen - lParen
+                      
+            for add in range(0,diff):
+                if result[len(result)-1:] == ")":
+                    result = result[:len(result)-1]
+                    self.pos -=1
+                    back = 1
+                    
+        if back == 1:
             self.advance()
+
+        #print "--" + result
+        #print "---" + self.text #[self.pos:]
+        #print "----" + str(self.current_char)
         return result
 
     # Look ahead at next token
     def look_ahead(self):
         if self.pos < len(self.text):
             current_pos = self.pos
+            current_text = self.text
             token = self.get_next_token()
             self.pos = current_pos
+            self.text = current_text
             self.current_char = self.text[self.pos]
 
             return token
@@ -95,12 +163,14 @@ class Lexer(object):
         apart into tokens. One token at a time.
         """
         while self.current_char is not None:
+            #print "-----"+str(self.current_char) + "," + str(self.pos) + "," + self.text[self.pos:]
 
             if self.current_char.isspace():
                 self.skip_whitespace()
                 continue
 
-            if self.current_char.isalnum() or self.current_char == '_':
+            if self.current_char.isalnum() or self.current_char == '_' or \
+                self.current_char == "\'" or self.current_char == "\"" or self.current_char == "-":
                 return Token(ATOM, self.atom())
 
             if self.current_char == '<':
@@ -159,7 +229,7 @@ class Lexer(object):
                 self.advance()
                 return Token(RPAREN, ')')
 
-            self.error()
+            self.error(self.current_char)
 
         return Token(EOF, None)
 
@@ -202,16 +272,14 @@ class Parser(object):
         # type and if they match then "eat" the current token
         # and assign the next token to the self.current_token,
         # otherwise raise an exception.
+
         if self.current_token.type == token_type:
             self.current_token = self.lexer.get_next_token()
         else:
             self.error()
 
-    def factor(self,propagateNot,boolVar):
-        """factor : (NOT)* ATOM | (NOT)* LPAREN notExpr RPAREN
-           Second argument - used to determine if an ATOM is a boolean variable that is not part of a term.
-           (i.e., x in (x && (y < 4))
-        """
+    def factor(self,propagateNot):
+        # factor : (NOT)* ATOM | (NOT)* LPAREN notExpr RPAREN
         token = self.current_token
 
         if token.type == NOT:
@@ -221,15 +289,7 @@ class Parser(object):
                 self.eat(ATOM)
                 if propagateNot == 0:
                     token.value = "!"+token.value
-                    if boolVar == 1:
-                        return BoolVar(token)
-                    else:
-                        return Atom(token)
-                else:
-                    if boolVar == 1:
-                        return BoolVar(token)
-                    else:
-                        return Atom(token)
+                return Atom(token)
             elif token.type == LPAREN:
                 self.eat(LPAREN)
                 if propagateNot == 0:
@@ -243,15 +303,7 @@ class Parser(object):
             self.eat(ATOM)
             if propagateNot == 1:
                token.value = "!"+token.value
-               if boolVar == 1:
-                   return BoolVar(token)
-               else:
-                   return Atom(token)
-            else:
-               if boolVar == 1:
-                   return BoolVar(token)
-               else:
-                   return Atom(token)
+            return Atom(token)
         elif token.type == LPAREN:
             self.eat(LPAREN)
             node = self.expr(propagateNot)
@@ -264,9 +316,9 @@ class Parser(object):
         """
         nextToken = self.lexer.look_ahead()
         if nextToken.type in (LT, LTE, GT, GTE, EQ, NEQ):
-            node = self.factor(0,0)
+            node = self.factor(0)
         else:
-            node = self.factor(propagateNot,1)
+            node = self.factor(propagateNot)
 
         while self.current_token.type in (LT, LTE, GT, GTE, EQ, NEQ):
             token = self.current_token
@@ -306,7 +358,7 @@ class Parser(object):
                 elif token.type == NEQ:
                     self.eat(NEQ)
 
-            node = BinOp(left=node, op=token, right=self.factor(0,0))
+            node = BinOp(left=node, op=token, right=self.factor(0))
 
         return node
 
@@ -370,34 +422,77 @@ class NodeVisitor(object):
         raise Exception('No visit_{} method'.format(type(node).__name__))
 
 class Interpreter(NodeVisitor):
+    boolVar = 1
+
     def __init__(self, parser):
         self.parser = parser
 
     def visit_BinOp(self, node):
         if node.op.type == LT:
-            return "("+self.visit(node.left)+" - "+self.visit(node.right)+" < 0 ? 0 : ("+self.visit(node.left)+" - "+self.visit(node.right)+") + scoreEpsilon)"
+            self.boolVar = 0
+            lhs = self.visit(node.left)
+            self.boolVar = 0
+            rhs = self.visit(node.right)
+            self.boolVar = 1
+            return "(" + lhs + " - " + rhs + " < 0 ? 0 : (" + lhs + " - " + rhs + ") + scoreEpsilon)"
         elif node.op.type == LTE:
-            return "("+self.visit(node.left)+" - "+self.visit(node.right)+" <= 0 ? 0 : ("+self.visit(node.left)+" - "+self.visit(node.right)+") + scoreEpsilon)"
+            self.boolVar = 0
+            lhs = self.visit(node.left)
+            self.boolVar = 0
+            rhs = self.visit(node.right)
+            self.boolVar = 1
+            return "(" + lhs + " - " + rhs + " <= 0 ? 0 : (" + lhs + " - " + rhs + ") + scoreEpsilon)"
         elif node.op.type == GT:
-            return "("+self.visit(node.right)+" - "+self.visit(node.left)+" < 0 ? 0 : ("+self.visit(node.right)+" - "+self.visit(node.left)+") + scoreEpsilon)"
+            self.boolVar = 0
+            lhs = self.visit(node.left)
+            self.boolVar = 0
+            rhs = self.visit(node.right)
+            self.boolVar = 1
+            return "(" + rhs + " - " + lhs + " < 0 ? 0 : (" + rhs + " - " + lhs + ") + scoreEpsilon)"
         elif node.op.type == GTE:
-            return "("+self.visit(node.right)+" - "+self.visit(node.left)+" <= 0 ? 0 : ("+self.visit(node.right)+" - "+self.visit(node.left)+") + scoreEpsilon)"
+            self.boolVar = 0
+            lhs = self.visit(node.left)
+            self.boolVar = 0
+            rhs = self.visit(node.right)
+            self.boolVar = 1
+            return "(" + rhs + " - " + lhs + " <= 0 ? 0 : (" + rhs + " - " + lhs + ") + scoreEpsilon)"
         elif node.op.type == EQ:
-            return "(abs("+self.visit(node.left)+" - "+self.visit(node.right)+") == 0 ? 0 : abs("+self.visit(node.left)+" - "+self.visit(node.right)+") + scoreEpsilon)"
+            self.boolVar = 0
+            lhs = self.visit(node.left)
+            self.boolVar = 0
+            rhs = self.visit(node.right)
+            self.boolVar = 1
+            return "(abs(" + lhs + " - " + rhs + ") == 0 ? 0 : abs(" + lhs + " - " + rhs + ") + scoreEpsilon)"
         elif node.op.type == NEQ:
-            return "(abs("+self.visit(node.left)+" - "+self.visit(node.right)+") != 0 ? 0 : scoreEpsilon)"
+            self.boolVar = 0
+            lhs = self.visit(node.left)
+            self.boolVar = 0
+            rhs = self.visit(node.right)
+            self.boolVar = 1
+            return "(abs(" + lhs + " - " + rhs + ") != 0 ? 0 : scoreEpsilon)"
         elif node.op.type == AND:
-            return "("+self.visit(node.left)+" + "+self.visit(node.right)+")" 
+            self.boolVar = 1
+            lhs = self.visit(node.left)
+            self.boolVar = 1
+            rhs = self.visit(node.right)
+            self.boolVar = 1
+            return "(" + lhs + " + " + rhs + ")" 
         elif node.op.type == OR:
-            return "("+self.visit(node.left)+" < "+self.visit(node.right)+" ? "+self.visit(node.left)+" : "+self.visit(node.right)+")" 
-
-    def visit_BoolVar(self, node):
-        return "("+node.value+" ? 0 : scoreEpsilon)"
-
+            self.boolVar = 1
+            lhs = self.visit(node.left)
+            self.boolVar = 1
+            rhs = self.visit(node.right)
+            self.boolVar = 1
+            return "(" +lhs + " < " + rhs + " ? " + lhs + " : " + rhs + ")" 
+        
     def visit_Atom(self, node):
-        return node.value
+        if self.boolVar == 1:
+            return "("+node.value+" ? 0 : scoreEpsilon)"
+        else:
+            return node.value
 
     def interpret(self):
+        self.boolVar = 1
         tree = self.parser.parse()
         return self.visit(tree)
 
