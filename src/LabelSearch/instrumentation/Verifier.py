@@ -69,7 +69,7 @@ class Verifier():
         # Compile and attempt to run the suite.
         (output, error) = self.compileProgram(outFile)
 
-        while error != "":
+        while error != "" and "error:" in error:
             if "obligations" in error:
                 print "Compilation error - attempting to fix obligations"
                 obligations = self.getObligationList(error)
@@ -77,7 +77,8 @@ class Verifier():
                 self.fixObligations(obligations)
                 (output, error) = self.compileProgram(outFile)
             else:
-                raise Exception("Compilation error due to non-obligation issue:\n" + error)
+                print "Compilation error due to non-obligation issue:\n" + error
+                error = ""
 
     # Compiles and runs suite
     def compileProgram(self, fileName):
@@ -85,10 +86,10 @@ class Verifier():
 
         if os.path.isfile(fileName):
             path = os.path.dirname(fileName)
+            compileProcess = Popen("gcc " + fileName + " -lm", stdout = PIPE, stderr = PIPE, shell=True)
+            (cOutput, cError) = compileProcess.communicate()
             rmProcess = Popen("rm a.out", stdout = PIPE, stderr = PIPE, shell = True)
             (rOutput, eError) = rmProcess.communicate()
-            compileProcess = Popen("gcc " + fileName, stdout = PIPE, stderr = PIPE, shell=True)
-            (cOutput, cError) = compileProcess.communicate()
             return (cOutput, cError)        
         else:
             raise Exception("The program file does not exist.")
