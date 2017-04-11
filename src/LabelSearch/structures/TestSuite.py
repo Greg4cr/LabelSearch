@@ -1,5 +1,5 @@
 # Gregory Gay (greg@greggay.com)
-# Data strcuture representing a test suite.
+# Data structure representing a test suite.
 # Consists of a test list, test code, suite code, and obligation scores.
 
 # This Source Code Form is subject to the terms of the Mozilla Public
@@ -42,26 +42,30 @@ class TestSuite():
                     toAppend = parts[testIndex]
                     if "{" in toAppend:
                         toAppend = toAppend[toAppend.index("{")+1:]
-                    elif "}" in toAppend:
+                    if "}" in toAppend:
                         toAppend = toAppend[:toAppend.index("}")]
 
                     testList.append(int(toAppend))
-                
+
+                del testList[0]                
                 suiteCode.append("//TESTLIST")
             elif "void test" in line:
                 if testNum == 0:
                     suiteCode.append("//TESTS")
 
                 testNum += 1
-                tests.append([])
-                tests[testNum].append(line)
+                tests.append("")
+                tests[testNum] += line
             elif "void runner()" in line:
+                prevComment = tests[testNum][tests[testNum].index("//"):]
+                tests[testNum] = tests[testNum][:tests[testNum].index("//")]
                 testNum = -1
+                suiteCode.append(prevComment)
                 suiteCode.append(line)
             elif testNum == -1:
                 suiteCode.append(line)
             elif testNum > -1:
-                tests[testNum].append(line)
+                tests[testNum] += line
 
         code.close()
 
@@ -75,7 +79,7 @@ class TestSuite():
         for line in self.getSuiteCode():
             if line == "//TESTLIST":
                 tests = self.getTestList()
-                out = "int tests[" + str(len(tests)) + "] = {"
+                out = "int tests[" + str(len(tests) + 1) + "] = {" + str(len(tests)) + ", "
                 for testIndex in range(0, len(tests)):
                     out = out + str(tests[testIndex]) + ", "
                 out = out[:len(out)-2] + "};\n"
@@ -83,7 +87,7 @@ class TestSuite():
             elif line == "//TESTS":
                 tests = self.getTests()
                 for testNum in range(0,len(tests)):
-                    where.write("".join(tests[testNum]))
+                    where.write(tests[testNum])
             elif line == "//FILENAME":
                 out = "char* fileName = \"" + os.path.basename(self.getFileName()) + "sv\";\n"
                 where.write(out)

@@ -13,7 +13,8 @@ LabelSearch is a proof-of-concept test case generator for C programs annotated w
 Progress
 ------------------------
 
-* Instrumentation - Complete
+* Instrumentation - In Progress
+  * Transfer from Frama-C/LTest-specific formatting to generic obligation format - To Do
 * Individual Suite Generation - In Progress
   * Test Suite Structure - Complete
   * Test Specification Generation - Complete
@@ -25,8 +26,9 @@ Progress
 * Suite Execution and Scoring - Complete
 * Metaheuristic Search - In Progress
   * Random Search - Complete
+* Assertion Generation - To Do
 
-Currently, we support basic label coverage. In the future, we plan to extend this to include hyperlabels.
+Currently, we support basic label coverage (as well as cross-test memory, due to the instrumentation). In the future, we plan to extend this to include all features of hyperlabels.
 
 Command Line Parameters
 ------------------------
@@ -38,7 +40,7 @@ Requirements
 
 Labels are generated using the Frama-C/LTest framework, available from [Mickaël Delahaye](http://micdel.fr/ltest.html).
 
-Parsing for test generation is performed using pycparser. To install, see [their GitHub page for instructions.](https://github.com/eliben/pycparser/).
+Parsing for test generation is performed using pycparser. To install, see [their GitHub page for instructions](https://github.com/eliben/pycparser/).
 
 Reporting Faults
 ------------------------

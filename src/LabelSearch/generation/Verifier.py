@@ -15,6 +15,7 @@ import sys
 import os
 from subprocess import Popen, call, PIPE, STDOUT
 from ..structures.TestSuite import TestSuite
+import copy
 
 class Verifier(): 
     # Test suite, in processable form
@@ -31,6 +32,7 @@ class Verifier():
 
     # Performs verification on a suite already in-memory
     def verify(self, outFile):
+        badTests = []
         # Compile and attempt to run the suite.
         (output, error) = self.compileSuite(self.suite.getFileName())
 
@@ -41,7 +43,7 @@ class Verifier():
         if "Segmentation fault" in error:
             #print error
             print "Attempting to find source(s) of segmentation faults"
-           
+
             # Turn off all tests
             # This step is repeated twice because of overlapping substrings.
             testList = self.suite.getTestList()
@@ -69,6 +71,7 @@ class Verifier():
                 if error != "":
                     #print error
                     testList = self.suite.getTestList()
+                    badTests.append(testNum)
                     testList[testNum] = 0
                     self.suite.setTestList(testList)
 
@@ -77,10 +80,107 @@ class Verifier():
             (output, error) = self.compileSuite(outFile)
             if error != "":
                 raise Exception("Unable to verify.")
+            else:
+                # Remove bad tests
+                print "Separating failing tests: "+str(badTests)
+                self.removeBadTests(badTests) 
         else:
             # Print test suite to file
             self.suite.writeSuiteFile()
 
+    # Separate bad tests from suite
+    def removeBadTests(self, badTests):
+        # Create failing tests directory
+        path = os.path.dirname(self.suite.getFileName())+"/failing_tests/"
+        if not os.path.isdir(path):
+            os.makedirs(path)
+
+        # Create test suite
+        failingSuite = TestSuite()
+        failingSuite.setFileName(path+"seg_fault.c")
+
+        if os.path.exists(path+"seg_fault.c"):
+            # Import existing failing tests
+            failingSuite.importSuite()
+
+        fTestList = copy.deepcopy(failingSuite.getTestList())
+        fTests = copy.deepcopy(failingSuite.getTests())
+        gTests = copy.deepcopy(self.suite.getTests())
+        gTestList = copy.deepcopy(self.suite.getTestList())
+
+        for entry in range(0,len(badTests)):
+            fTestList.append(0)
+            fTests.append(gTests[badTests[entry]-entry])
+            del gTests[badTests[entry]-entry]
+            gTestList.remove(0)
+
+        # Fix test numbering
+        for entry in range(1,len(fTests)+1):
+            test = fTests[entry-1]
+            num = test.strip().split("test")[1]
+            num = num[:num.index("(")]
+            if int(num) != entry:
+                fTests[entry-1] = test.replace("test"+num,"test"+str(entry))
+
+        for entry in range(1,len(gTests)+1):
+            test = gTests[entry-1]
+            num = test.strip().split("test")[1]
+            num = num[:num.index("(")]
+            if int(num) != entry:
+                gTests[entry-1] = test.replace("test"+num,"test"+str(entry))
+
+        # Fix test runner for existing suite
+
+        self.suite.setTestList(gTestList)
+        self.suite.setTests(gTests)
+        gCode = copy.deepcopy(self.suite.getSuiteCode())
+
+        # Suite code, line 11, is where the runner starts
+        # After that, there are two lines per test
+        deleted = 0
+        for line in range(11,len(gCode)-1,2):
+            num = gCode[line-deleted][gCode[line-deleted].index("[")+1:gCode[line-deleted].index("]")]
+            if int(num) > len(gTestList):
+                del gCode[line-deleted]
+                del gCode[line-deleted]
+                deleted+=2
+        self.suite.setSuiteCode(gCode)
+
+        # Create suite code for failing tests
+       
+        failingSuite.setTestList(fTestList) 
+        failingSuite.setTests(fTests) 
+        fCode = copy.deepcopy(gCode)
+        if len(fTestList) < len(gTestList):
+            # If the "good" test list is longer than bad, remove entries from the runner
+            deleted = 0
+            for line in range(11,len(fCode)-1,2):
+                num = fCode[line-deleted][fCode[line-deleted].index("[")+1:fCode[line-deleted].index("]")]
+                if int(num) > len(fTestList):
+                    del fCode[line-deleted]
+                    del fCode[line-deleted]
+                    deleted+=2
+        elif len(fTestList) > len(gTestList):
+            # If the "bad" list is longer, add entries to the runner
+            lastLine = fCode[len(fCode)-1]
+            lastTest = fCode[len(fCode)-2]
+            
+            if "runner" not in lastTest:
+                lastTest = lastTest.split("test")[1]
+                lastTest = int(lastTest[:lastTest.index("(")])
+            else:
+                lastTest = 0
+
+
+            del fCode[len(fCode)-1]
+            for entry in range(lastTest + 1,len(fTestList)):
+                fCode.append("    if(tests[" + str(entry) + "] == 1)\n")
+                fCode.append("        test" + str(entry) + "();\n")
+
+            fCode.append(lastLine)     
+
+        failingSuite.setSuiteCode(fCode)
+        failingSuite.writeSuiteFile()
 
     # Compiles and runs suite
     def compileSuite(self, fileName):
