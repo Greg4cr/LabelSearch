@@ -202,6 +202,10 @@ class GeneratorFactory():
                     return self.ug.generate(self)
             print("We do not have a valid definition for union: "+unionName)
             return "//"+typeToGenerate
+        elif "const " in typeToGenerate:
+            return self.generate(typeToGenerate.replace("const ",""))
+        elif "volatile " in typeToGenerate:
+            return self.generate(typeToGenerate.replace("volatile ",""))
         else:
             # Check typedefs list
             for entry in self.typeDefs:
