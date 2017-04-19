@@ -66,6 +66,14 @@ class GeneratorFactory():
 
         if typeToGenerate == "int" or typeToGenerate == "signed int": 
             return self.ig.generate()
+        elif typeToGenerate == "unsigned int":
+            self.ig.minInt = self.unsignedIntMin
+            
+            value = self.ig.generate()
+
+            self.ig.minInt = self.defaultIntMin
+
+            return value
         elif typeToGenerate == "short" or typeToGenerate == "short int" or \
             typeToGenerate == "signed short" or typeToGenerate == "signed short int":
             self.ig.minInt = self.shortIntMin

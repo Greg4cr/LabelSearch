@@ -206,11 +206,8 @@ class ProgramDataVisitor(c_ast.NodeVisitor):
                 struct = []
                 struct.append(node.type.name)
                 struct.append([])
-                print node.type.name
-                print node.type.show()
                 for decl in node.type.decls:
                     member = []
-                    #print decl.show()
                     member.append(decl.name)
                     member.append([])
                     if type(decl.type) is c_ast.TypeDecl:
@@ -256,7 +253,6 @@ class ProgramDataVisitor(c_ast.NodeVisitor):
                         while type(nextLevel) is c_ast.PtrDecl:
                             nextLevel = nextLevel.type
  
-                        print nextLevel.show() 
                         # Type
                         cType = []
                         if type(nextLevel.type) is c_ast.Enum:
@@ -280,7 +276,6 @@ class ProgramDataVisitor(c_ast.NodeVisitor):
     def visit_TypeDecl(self, node):
         # Get the name and type of all typedefs.
         if type(node.type) is c_ast.Enum:
-            #print node.show()
 
             if node.type.name != None:
                 self.typeDefs.append([node.declname, ["enum", node.type.name]])
@@ -302,7 +297,6 @@ class ProgramDataVisitor(c_ast.NodeVisitor):
                 struct.append([])
                 for decl in node.type.decls:
                     member = []
-                    #print decl.show()
                     member.append(decl.name)
                     member.append([])
                     if type(decl.type) is c_ast.TypeDecl:
@@ -335,7 +329,6 @@ class ProgramDataVisitor(c_ast.NodeVisitor):
                 union.append([])
                 for decl in node.type.decls:
                     member = []
-                    #print decl.show()
                     member.append(decl.name)
                     member.append([])
                     if type(decl.type) is c_ast.TypeDecl:
