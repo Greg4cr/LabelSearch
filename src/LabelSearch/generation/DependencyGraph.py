@@ -99,6 +99,8 @@ class ProgramDataVisitor(c_ast.NodeVisitor):
     structs = []
     # Union definition list
     unions = []
+    # Enum definition list
+    enums = []
     # Generator to get C code from a node
     generator = c_generator.CGenerator()
 
@@ -109,7 +111,36 @@ class ProgramDataVisitor(c_ast.NodeVisitor):
         function.append(node.decl.name)
 
         # Return type
-        function.append(node.decl.type.type.type.names)
+        if type(node.decl.type.type) is c_ast.PtrDecl:
+            rType = []
+            if type(node.decl.type.type.type.type) is c_ast.Enum:
+                rType = ['*','enum']
+                rType.append(node.decl.type.type.type.type.name)
+            elif type(node.decl.type.type.type.type) is c_ast.Struct:
+                rType = ['*','struct']
+                rType.append(node.decl.type.type.type.type.name)
+            elif type(node.decl.type.type.type.type) is c_ast.Union:
+                rType = ['*','union']
+                rType.append(node.decl.type.type.type.type.name)
+            else:
+                rType = node.decl.type.type.type.type.names
+                rType.insert(0,"*")
+
+            function.append(rType)
+        elif type(node.decl.type.type.type) is c_ast.Enum:
+            rType = ['enum']
+            rType.append(node.decl.type.type.type.name)
+            function.append(rType)
+        elif type(node.decl.type.type.type) is c_ast.Struct:
+            rType = ['struct']
+            rType.append(node.decl.type.type.type.name)
+            function.append(rType)
+        elif type(node.decl.type.type.type) is c_ast.Union:
+            rType = ['union']
+            rType.append(node.decl.type.type.type.name)
+            function.append(rType)
+        else:
+            function.append(node.decl.type.type.type.names)
 
         # Arguments
         args=self.generator.visit(node.decl.type.args).split(",")
@@ -172,7 +203,10 @@ class ProgramDataVisitor(c_ast.NodeVisitor):
                         member[1].append(decl.type.type.type.names)
                     elif type(decl.type) is c_ast.PtrDecl:
                         member[1].append("pointer")
-                        member[1].append(decl.type.type.type.names)
+                        try:
+                            member[1].append(decl.type.type.type.names)
+                        except AttributeError:
+                            print decl.type.type.type
 
                     struct[1].append(member)
                 self.structs.append(struct)
@@ -180,7 +214,14 @@ class ProgramDataVisitor(c_ast.NodeVisitor):
     # TypeDecl nodes indicate type definitions
     def visit_TypeDecl(self, node):
         # Get the name and type of all typedefs.
-        if type(node.type) is c_ast.Struct:
+        if type(node.type) is c_ast.Enum:
+            print node.show()
+
+            if node.type.name != None:
+                self.typeDefs.append([node.declname, ["enum", node.type.name]])
+            else:
+                self.typeDefs.append([node.declname, ["enum", node.declname]])
+        elif type(node.type) is c_ast.Struct:
             if node.type.name != None:
                 self.typeDefs.append([node.declname, ["struct", node.type.name]])
             else:
@@ -213,7 +254,7 @@ class ProgramDataVisitor(c_ast.NodeVisitor):
 
                     struct[1].append(member)
                 self.structs.append(struct)
-        if type(node.type) is c_ast.Union:
+        elif type(node.type) is c_ast.Union:
             if node.type.name != None:
                 self.typeDefs.append([node.declname, ["union", node.type.name]])
             else:

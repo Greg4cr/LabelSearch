@@ -38,6 +38,8 @@ class Generator():
     __structs = []
     # List of union definitions.
     __unions = []
+    # List of enum definitions.
+    __enums = []
     # Dependency map for state information
     __dependencyMap = []
     # Max suite size
@@ -533,11 +535,13 @@ class Generator():
         self.setTypeDefs(pdVisitor.typeDefs)
         self.setStructs(pdVisitor.structs)
         self.setUnions(pdVisitor.unions)
+        self.setEnums(pdVisitor.enums)
         print self.getFunctions()
         print self.getStateVariables()
         print self.getTypeDefs()
         print self.getStructs()
         print self.getUnions()
+        print self.getEnums()
         
         # Use the DependencyMapVisitor to build the dependency map
         dpVisitor = DependencyMapVisitor(self.getFunctions(), self.getStateVariables())
@@ -643,6 +647,9 @@ class Generator():
     def setUnions(self, unions):
         self.__unions = unions
 
+    def setEnums(self, enums):
+        self.__enums = enums
+
     # Getters for global variables
     def getProgram(self):
         return self.__program
@@ -664,6 +671,9 @@ class Generator():
 
     def getUnions(self):
         return self.__unions
+
+    def getEnums(self):
+        return self.__enums
 
 def main(argv):
     generator = Generator()
