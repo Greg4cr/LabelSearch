@@ -164,6 +164,8 @@ class ProgramDataVisitor(c_ast.NodeVisitor):
                     var.append(["struct", node.type.type.name])
                 elif type(node.type.type) is c_ast.Union:
                     var.append(["union", node.type.type.name])
+                elif type(node.type.type) is c_ast.Enum:
+                    var.append(["enum", node.type.type.name])
                 else:
                     var.append(node.type.type.names)
                 # Initial Value
@@ -180,7 +182,20 @@ class ProgramDataVisitor(c_ast.NodeVisitor):
                 # Status
                 var.append("pointer")
                 # Type
-                var.append(node.type.type.type.names)
+                nextLevel = node.type
+                # Could have multiple levels of pointer, i.e., **int or ***int
+                # We need to dig through until we find the type information
+                while type(nextLevel) is c_ast.PtrDecl:
+                    nextLevel = nextLevel.type
+ 
+                if type(nextLevel.type) is c_ast.Struct: 
+                    var.append(["struct", nextLevel.type.name])
+                elif type(nextLevel.type) is c_ast.Union:
+                    var.append(["union", nextLevel.type.name])
+                elif type(nextLevel.type) is c_ast.Enum:
+                    var.append(["enum", nextLevel.type.name])
+                else:
+                    var.append(nextLevel.type.names)
                 # Initial value
                 var.append(self.generator.visit(node.init))
                 self.stateVariables.append(var)
@@ -188,6 +203,8 @@ class ProgramDataVisitor(c_ast.NodeVisitor):
                 struct = []
                 struct.append(node.type.name)
                 struct.append([])
+                print node.type.name
+                print node.type.show()
                 for decl in node.type.decls:
                     member = []
                     #print decl.show()
@@ -197,16 +214,61 @@ class ProgramDataVisitor(c_ast.NodeVisitor):
                         # Status
                         member[1].append("var")
                         # Type
-                        member[1].append(decl.type.type.names)
+                        cType = []
+                        if type(decl.type.type) is c_ast.Enum:
+                            cType = ['enum']
+                            cType.append(decl.type.type.name)
+                        elif type(decl.type.type) is c_ast.Struct:
+                            cType = ['struct']
+                            cType.append(decl.type.type.name)
+                        elif type(decl.type.type) is c_ast.Union:
+                            cType = ['union']
+                            cType.append(decl.type.type.name)
+                        else:
+                            cType = decl.type.type.names
+                        
+                        member[1].append(cType)
                     elif type(decl.type) is c_ast.ArrayDecl:
                         member[1].append("array,"+str(decl.type.dim.value))
-                        member[1].append(decl.type.type.type.names)
+                        # Type
+                        cType = []
+                        if type(decl.type.type.type) is c_ast.Enum:
+                            cType = ['enum']
+                            cType.append(decl.type.type.type.name)
+                        elif type(decl.type.type.type) is c_ast.Struct:
+                            cType = ['struct']
+                            cType.append(decl.type.type.type.name)
+                        elif type(decl.type.type.type) is c_ast.Union:
+                            cType = ['union']
+                            cType.append(decl.type.type.type.name)
+                        else:
+                            cType = decl.type.type.type.names
+                        
+                        member[1].append(cType)
                     elif type(decl.type) is c_ast.PtrDecl:
                         member[1].append("pointer")
-                        try:
-                            member[1].append(decl.type.type.type.names)
-                        except AttributeError:
-                            print decl.type.type.type
+                        nextLevel = decl.type.type
+                        # Could have multiple levels of pointer, i.e., **int or ***int
+                        # We need to dig through until we find the type information
+                        while type(nextLevel) is c_ast.PtrDecl:
+                            nextLevel = nextLevel.type
+ 
+                        print nextLevel.show() 
+                        # Type
+                        cType = []
+                        if type(nextLevel.type) is c_ast.Enum:
+                            cType = ['enum']
+                            cType.append(nextLevel.type.name)
+                        elif type(nextLevel.type) is c_ast.Struct:
+                            cType = ['struct']
+                            cType.append(nextLevel.type.name)
+                        elif type(nextLevel.type) is c_ast.Union:
+                            cType = ['union']
+                            cType.append(nextLevel.type.name)
+                        else:
+                            cType = nextLevel.type.names
+                        
+                        member[1].append(cType)
 
                     struct[1].append(member)
                 self.structs.append(struct)
@@ -215,7 +277,7 @@ class ProgramDataVisitor(c_ast.NodeVisitor):
     def visit_TypeDecl(self, node):
         # Get the name and type of all typedefs.
         if type(node.type) is c_ast.Enum:
-            print node.show()
+            #print node.show()
 
             if node.type.name != None:
                 self.typeDefs.append([node.declname, ["enum", node.type.name]])
