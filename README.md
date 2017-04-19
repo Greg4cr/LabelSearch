@@ -20,12 +20,15 @@ Progress
   * Test Specification Generation - Complete
   * Concrete Input Generation - In Progress
     * All basic types now supported.
-    * Structs supported. 
+    * Structs and unions supported.
+    * Pointer support still rudimentary (just acts as normal data type) 
   * Suite Verification - Complete
   * Suite Minimization - To Do
 * Suite Execution and Scoring - Complete
 * Metaheuristic Search - In Progress
   * Random Search - Complete
+  * Local Search (AVM) - To Do
+  * Global Search (GA) - To Do
 * Assertion Generation - To Do
 
 Currently, we support basic label coverage (as well as cross-test memory, due to the instrumentation). In the future, we plan to extend this to include all features of hyperlabels.
