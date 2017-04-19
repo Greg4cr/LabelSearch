@@ -68,7 +68,10 @@ class DependencyMapVisitor(c_ast.NodeVisitor):
     # We want to record function calls as well to indicate dependencies.
     # Function arguments can also use state variables
     def visit_FuncCall(self, node):
-        self.currentFunction[1].append([node.name.name,"function"])
+        if type(node.name) is c_ast.UnaryOp:
+            self.currentFunction[1].append([node.name.expr.name,"function"]) 
+        else:
+            self.currentFunction[1].append([node.name.name,"function"])
         args=self.generator.visit(node.args)
         for var in self.stateVariables:
             if var[0] in args:
