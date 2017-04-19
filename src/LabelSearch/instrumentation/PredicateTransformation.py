@@ -170,7 +170,7 @@ class Lexer(object):
                 continue
 
             if self.current_char.isalnum() or self.current_char == '_' or \
-                self.current_char == "\'" or self.current_char == "\"" or self.current_char == "-":
+                self.current_char == "\'" or self.current_char == "\"" or self.current_char == "-" or self.current_char == "*":
                 return Token(ATOM, self.atom())
 
             if self.current_char == '<':
